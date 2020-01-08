@@ -1,13 +1,17 @@
-library(haven)
-library(dplyr)
-
 #================================================#
 # Preparing the R Session ####
 #================================================#
 
-req_packages <- c("Hmisc", "ggplot2", "car", "psych", "GPArotation","hornpa")
-req_packages <- req_packages[!req_packages %in% installed.packages()]
-lapply(req_packages, install.packages)
+#req_packages <- c("Hmisc", "ggplot2", "car", "psych", "GPArotation","hornpa")
+#req_packages <- req_packages[!req_packages %in% installed.packages()]
+#lapply(req_packages, install.packages)
+
+#================================================#
+# Loading Packages ####
+#================================================#
+
+library(haven)
+library(dplyr)
 
 #================================================#
 # Download necessary files ####
@@ -303,16 +307,21 @@ dat <- dat %>% filter(nas < length(q17ident))
 # IV: Environmental Identity####
 #================================================#
 
+# Recoding the variable so that high score means environmental friendly
+q17ident_rec <- q17ident[c(1,3,4,6,9,10,11)]
+
+
+dat[, q17ident_rec] <- lapply(dat[, q17ident_rec], function(i) 
+  ifelse(i == 1, 5, 
+  ifelse(i == 2, 4,
+  ifelse(i == 3, 3,
+  ifelse(i == 4, 2,
+  ifelse(i == 5, 1, NA))))))
+
+
 #================================================#
 # PCA ####
 #================================================#
-
-# Load data
-
-raq_data <- read.table("https://raw.githubusercontent.com/IMSMWU/Teaching/master/MRDA2017/raq.dat", 
-                       sep = "\t", 
-                       header = TRUE) #read in data
-head(raq_data)
 
 # STEP 1
 
@@ -335,7 +344,7 @@ apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correl
 apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
 # Conduct Bartlett's test (p should be < 0.05)
 
-cortest.bartlett(raq_matrix, n = nrow(raq_data))
+cortest.bartlett(raq_matrix, n = nrow(dat))
 # Count number of high correlations for each variable
 
 apply(abs(correlations) > 0.8, 1, sum, na.rm = TRUE)
@@ -353,7 +362,7 @@ KMO(dat[,q17ident])
 # Deriving factors
 
 # Find the number of factors to extract
-pc1 <- principal(dat, nfactors = length(q17ident), rotate = "none")
+pc1 <- principal(dat[,q17ident], nfactors = 11, rotate = "none")
 pc1
 
 plot(pc1$values, type="b")
@@ -361,7 +370,7 @@ abline(h=1, lty=2)
 
 # Run model with appropriate number of factors
 
-pc2 <- principal(dat[,q17ident], nfactors = 4, rotate = "none")
+pc2 <- principal(dat[,q17ident], nfactors = 2, rotate = "none")
 pc2
 # Inspect residuals
 
@@ -396,27 +405,58 @@ shapiro.test(residuals)
 
 # Orthogonal factor rotation 
 
-pc3 <- principal(dat[,q17ident], nfactors = 4, rotate = "varimax")
+pc3 <- principal(dat[,q17ident], nfactors = 2, rotate = "varimax")
 pc3
 print.psych(pc3, cut = 0.3, sort = TRUE)
 
 # Oblique factor rotation 
 
-pc4 <- principal(dat[,q17ident], nfactors = 4, rotate = "oblimin", scores = TRUE)
+pc4 <- principal(dat[,q17ident], nfactors = 2, rotate = "oblimin", scores = TRUE)
 print.psych(pc4, cut = 0.3, sort = TRUE) # QUESTION: What to do with the other factors?
+
+#calculate the pca only with relevant variables
+pc4 <- principal(dat[,q17ident[c(1,2,3,4,6,7,9,10,11)]], nfactors = 1, rotate = "oblimin", scores = TRUE)
+print.psych(pc4, cut = 0.3, sort = TRUE)
+
+# Add factor scores to dataframe 
+dat <- cbind(dat, pc4$scores)
+
+# for now just let´s name the TC1 as ei for (environmental identity)
+
+dat <- dat %>% rename("ei_fac" = "PC1")
+
+
+# excluding 5 and 8 from the factor due to high loadings on another factor
+
+dat$ei2 <- dat %>% select(q17ident[c(1,2,3,4,6,7,9,10,11)]) %>% 
+  mutate(ei2 = rowSums(., na.rm = TRUE)) %>% pull(ei2)
+  
+
+dat$nas <- apply(dat[,q17ident[c(1,2,3,4,6,7,9,10,11)]], MARGIN = 1, function(x) sum(is.na(x)))
+
+
+dat[,c("ei2","nas")]
+
+table(dat$nas)
+
+
+# if there are more than 5 Nas don´t calculate the mean, otherwise take the average
+dat <- dat %>% mutate(ei3 = ifelse(nas > 5, NA, 
+                            ifelse(nas == 0, ei2/9,
+                            ifelse(nas !=0, ei2/(9-nas),NA))))
+
+hist(dat$ei3)
+mean(dat$ei3, na.rm = TRUE)
+sd(dat$ei3, na.rm = TRUE)
+
+### create the index
 
 # STEP 4
 
 # Compute factor scores 
 
 head(pc4$scores)
-# Add factor scores to dataframe 
 
-dat <- cbind(dat, pc4$scores)
-
-# for now just let´s name the TC1 as ei for (environmental identity)
-
-dat <- dat %>% rename("ei" = "TC1")
 
 #================================================#
 # Reliability Analysis ####
@@ -424,16 +464,154 @@ dat <- dat %>% rename("ei" = "TC1")
 
 # Specify subscales according to results of PCA
 
-identity <- dat[,q17a[c(9,3,11,10,4,6)]]
+identity <- dat[,q17ident[c(1,2,3,4,6,7,9,10,11)]]
 salience <- dat[,q17sal]
 prominence <- dat[,q17pro]
 commitment <- dat[,q17com]
 # Test reliability of subscales
-
 psych::alpha(identity)
 psych::alpha(salience)
 psych::alpha(prominence, keys = c("eabk093a"))
 psych::alpha(commitment, keys = c("eabk101a"))
+# drop item eabk101a
+
+#================================================#
+# Variable Construction ####
+#================================================#
+
+# Now based on these Alphas let´s create our variables
+### Identity Salience
+
+# calculate the rowsums
+dat$sal_sum <- dat %>% select(q17sal) %>% 
+mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
+
+# calculate the NAs
+dat$sal_nas <- apply(dat[,q17sal], MARGIN = 1, function(x) sum(is.na(x)))
+
+# create new variable if NAs < 50%
+dat <- dat %>% mutate(ident_sal = ifelse(sal_nas > 3, NA,
+                            ifelse(sal_nas == 0 | sal_nas !=0, sal_sum/(5-sal_nas),NA)))
+
+
+dat %>% select(q17sal, sal_sum, sal_nas, ident_sal)
+
+### Identity Prominence
+
+# first let´s recode the one item that is reverse coded
+dat[,"eabk093a"] <-  
+ifelse(dat$eabk093a == 1, 5, 
+ifelse(dat$eabk093a == 2, 4,
+ifelse(dat$eabk093a == 3, 3,
+ifelse(dat$eabk093a == 4, 2,
+ifelse(dat$eabk093a == 5, 1, NA)))))
+
+# calculate the rowsums
+dat$pro_sum <- dat %>% select(q17pro) %>% 
+  mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
+
+# calculate the NAs
+dat$pro_nas <- apply(dat[,q17pro], MARGIN = 1, function(x) sum(is.na(x)))
+
+# create new variable if NAs < 50%
+dat <- dat %>% mutate(ident_pro = ifelse(pro_nas > 2, NA,
+                                  ifelse(pro_nas == 0 | pro_nas !=0, pro_sum/(4-pro_nas),NA)))
+
+dat %>% select(q17pro, pro_sum, pro_nas, ident_pro)
+
+### Identity commitment
+
+# calculate the rowsums
+dat$com_sum <- dat %>% select(q17com[2:3]) %>% 
+  mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
+
+# calculate the NAs
+dat$com_nas <- apply(dat[,q17com[2:3]], MARGIN = 1, function(x) sum(is.na(x)))
+
+# create new variable if NAs < 50%
+dat <- dat %>% mutate(ident_com = ifelse(com_nas > 1, NA,
+                                   ifelse(com_nas == 0 | com_nas !=0, com_sum/(2-com_nas),NA)))
+
+
+dat %>% select(q17com[2:3], com_sum, com_nas, ident_com)
+
+### Angemessenheit
+
+ceas105a
+
+### Einschätzung Treibhausgase
+
+q15bb <- c(
+  "ceas107a", # Einschätzung Treibhausgase: Gemüse und Obst 
+  "ceas108a", # Einschätzung Treibhausgase: Fleisch und Fleischerzeugnisse 
+  "ceas109a", # Einschätzung Treibhausgase: Milch und Milcherzeugnisse 
+  "ceas110a", # Einschätzung Treibhausgase: Öl und Eier 
+  "ceas111a", # Einschätzung Treibhausgase: Zucker, Honig und Kakao 
+  "ceas112a", # Einschätzung Treibhausgase: Reis, Kartoffeln und Hülsenfrüchte 
+  "ceas113a", # Einschätzung Treibhausgase: Getreide und Getreideerzeugnisse
+  "ceas114a" #Diskussionen Treibhausgase und Klimaschutz
+)
+
+# transform to integers
+dat[,q15bb] <- lapply(dat[,q15bb], function(x) as.integer(x))
+
+# somehow there are odd values given as an answer, so convert all values >7 (max rank) to NA
+dat[,q15bb] <- lapply(dat[,q15bb], function(x) ifelse(x > 7, NA, x))
+
+
+# Create a new variable. If meat is ranked as 1st or 2nd place, give it 1 
+# (meaning the person knows about the harm meat does to the environment)
+dat <- dat %>% mutate(know = ifelse(ceas108a %in% c(1,2), 1,0))
+
+
+
+lapply(dat[,q15bb], function(x) mean(x, na.rm = TRUE))
+
+
+
+
+View(select(dat, q15bb))
+
+
+
+### NEP Skala
+
+q15d <- c(
+  "cczd001a", # Großstadtnähe Wohngegend
+  "cczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen 
+  "cczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen 
+  "cczd004a", # NEP-Skala: Folgen von menschlichem Eingriff 
+  "cczd005a", # NEP-Skala: Menschlicher Einfallsreichtum 
+  "cczd006a", # NEP-Skala: Missbrauch der Umwelt durch Menschen 
+  "cczd007a", # NEP-Skala: Genügend natürliche Rohstoffe 
+  "cczd008a", # NEP-Skala: Pflanzen und Tiere gleiches Recht 
+  "cczd009a", # NEP-Skala: Gleichgewicht der Natur stabil genug 
+  "cczd010a", # NEP-Skala: Menschen Naturgesetzen unterworfen 
+  "cczd011a", # NEP-Skala: Umweltkrise stark übertrieben. 
+  "cczd012a", # NEP-Skala: Erde ist wie Raumschiff 
+  "cczd013a", # NEP-Skala: Menschen zur Herrschaft über Natur bestimmt 
+  "cczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich 
+  "cczd015a", # NEP-Skala: Natur kontrollieren 
+  "cczd016a") # NEP-Skala: Umweltkatastrophe
+
+
+### Andere umweltfreundliche Aktivitäten
+
+#Nutzung und andere Meinungen
+q15d <- c(
+  "cczd030a", # Meinung Atomausstieg 
+  "cczd031a", # Klimaschutzpolitik - Tempo 
+  "cczd032a", # Ernsthaftigkeit Problem Klimawandel 
+  "cczd033a", # Besitz ÖPNV-Karte 
+  "cczd034a", # Verfügbarkeit Auto 
+  "cczd035a", # Nutzungshäufigkeit: Auto 
+  "cczd036a", # Nutzungshäufigkeit: Fahrrad 
+  "cczd037a", # Nutzungshäufigkeit: Bus oder Bahn in der Region 
+  "cczd038a", # Nutzungshäufigkeit: Bahn auf längeren Strecken 
+  "cczd039a", # Einkauf Bio-Lebensmittel 
+  "cczd040a", # Einkauf Regionale Lebensmittel 
+  "cczd041a" # Bezug Ökostrom
+)
 
 
 
@@ -463,12 +641,6 @@ dat %>% group_by(ceas097a) %>% summarise_at(.vars = q17ident,
 
 dat %>% group_by(ceas097a) %>% summarize(mean(new2, na.rm = TRUE))
 
-dat$new2 <- dat %>% select(q17a[c(9,3,11,10,4,6)], new2) %>% rowSums
-
-dat$new2 <- dat$new2/6
-
-
-dat$new <- with(dat,)
 
 library(ggplot2)
 ggplot(dat, mapping = aes(ei, ceas097a)) + 
@@ -496,10 +668,11 @@ scatterplot <- ggscatterstats(
   messages = FALSE # turn off messages and notes
 )
 
+library(ggstatsplot)
 ggbetweenstats(
   data = dat,
   x = ceas097a,
-  y = new2,
+  y = ei,
   plot.type = "box",
   pairwise.comparisons = TRUE,
   pairwise.annotation = "p.value",
