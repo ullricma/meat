@@ -117,7 +117,7 @@ q15bb <- c(
 
 #CC 08/2015
 q15d <- c(
-"cczd001a", # Großstadtnähe Wohngegend
+#"cczd001a", # Großstadtnähe Wohngegend
 "cczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen 
 "cczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen 
 "cczd004a", # NEP-Skala: Folgen von menschlichem Eingriff 
@@ -166,7 +166,7 @@ q15 <- q15[,c(id,q15_vars)]
 # Questionnaires from 2016 ####
 #================================================#
 q16a <- c(
-"dczd001a", # Großstadtnähe Wohngegend 
+#"dczd001a", # Großstadtnähe Wohngegend 
 "dczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen 
 "dczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen 
 "dczd004a", # NEP-Skala: Folgen von menschlichem Eingriff 
@@ -216,13 +216,13 @@ q17ident <- c(
 "eabk082a", # Selbsteinschätzung: Von Umwelt entfremdet 
 "eabk083a", # Selbsteinschätzung: Um Umwelt besorgt 
 "eabk084a", # Selbsteinschätzung: Umwelt beschützend 
-"eabk085a", # Selbsteinschätzung: Der Umwelt überlegen 
+"eabk085a", # Selbsteinschätzung: Der Umwelt überlegen #
 "eabk086a", # Selbsteinschätzung: Leidenschaftlicher Naturfreund 
-"eabk087a", # Selbsteinschätzung: Respektlos gegenüber Umwelt 
-"eabk088a", # Selbsteinschätzung: Unabhängig von Umwelt 
+"eabk087a", # Selbsteinschätzung: Respektlos gegenüber Umwelt #
+"eabk088a", # Selbsteinschätzung: Unabhängig von Umwelt #
 "eabk089a", # Selbsteinschätzung: Fürsprecher von Umweltbelangen 
 "eabk090a", # Selbsteinschätzung: Bewahrer der Umwelt 
-"eabk091a") # Selbsteinschätzung: Wehmütig bezüglich Umwelt
+"eabk091a") # Selbsteinschätzung: Wehmütig bezüglich Umwelt #
 
 q17pro <- c(
 "eabk092a", # Zustimmung: Kauf Öko-Produkte Teil des 
@@ -257,7 +257,7 @@ q17 <- q17[,c(id,q17ident,q17pro,q17sal,q17com,q17b)]
 
 
 #================================================#
-# Data Combining and Cleaning ####
+# Data Combining and NA Handling ####
 #================================================#
 
 # Now we are going to create our raw data set with all necessary variables,
@@ -275,10 +275,8 @@ cols <- names(raw)
 missing_values <- c(-11 ,-22 ,-33 ,-44 ,-55 ,-66 ,-77 ,-88 ,-99 ,-111)
 raw[cols] <- lapply(raw[cols], function(x) replace(x,x %in% missing_values, NA) )
 
-# create a new variable for age
-raw$age <- 2020-raw$a11d056b
 
-# rename some variables, because we will use them quite often
+# rename id variable, because we will use this quite often
 raw <- raw %>% rename("id" = "z000001a")
 
 
@@ -304,7 +302,11 @@ dat$nas <- dat %>%
 dat <- dat %>% filter(nas < length(q17ident))
 
 #================================================#
-# IV: Environmental Identity####
+# Complex Variable Construction ####
+#================================================#
+
+#================================================#
+# IV: Environmental Identity ####
 #================================================#
 
 # Recoding the variable so that high score means environmental friendly
@@ -318,16 +320,304 @@ dat[, q17ident_rec] <- lapply(dat[, q17ident_rec], function(i)
   ifelse(i == 4, 2,
   ifelse(i == 5, 1, NA))))))
 
+#--------------------------------------------------#
+# PCA (Environmental Identity)                             
+#--------------------------------------------------#
 
-#================================================#
-# PCA ####
-#================================================#
+### STEP 1
+
+# Inspect correlation matrix
+
+raq_matrix <- cor(dat[,q17ident], use="complete.obs") #create matrix
+round(raq_matrix,3)
+
+# Low correlations by variable
+
+correlations <- as.data.frame(raq_matrix)
+# Correlation plot
+
+library(psych)
+corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations between variables")
+# Check number of low correlations adn mean correlaiton per variable
+
+diag(correlations) <- NA #set diagonal elements to missing
+apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correlations for each variable
+apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
+# Conduct Bartlett's test (p should be < 0.05)
+
+cortest.bartlett(raq_matrix, n = nrow(dat))
+# Count number of high correlations for each variable
+
+apply(abs(correlations) > 0.8, 1, sum, na.rm = TRUE)
+
+# Compute determinant (should be > 0.00001)
+det(raq_matrix)
+det(raq_matrix) > 0.00001
+
+# Compute MSA statstic (should be > 0.5)
+KMO(dat[,q17ident])
+
+### STEP 2
+
+# Deriving factors
+# Find the number of factors to extract
+pc1 <- principal(dat[,q17ident], nfactors = 11, rotate = "none")
+pc1
+
+plot(pc1$values, type="b")
+abline(h=1, lty=2)
+
+# Run model with appropriate number of factors
+pc2 <- principal(dat[,q17ident], nfactors = 2, rotate = "none")
+pc2
+
+### Inspect residuals
+
+# Create residuals matrix
+residuals <- factor.residuals(raq_matrix, pc2$loadings)
+round(residuals,3)
+
+# Create reproduced matrix
+reproduced_matrix <- factor.model(pc2$loadings)
+round(reproduced_matrix,3)
+
+# Compute model fit manually (optional - also included in output)
+ssr <- (sum(residuals[upper.tri((residuals))]^2)) #sum of squared residuals 
+ssc <- (sum(raq_matrix[upper.tri((raq_matrix))]^2)) #sum of squared correlations
+ssr/ssc #ratio of ssr and ssc
+1-(ssr/ssc) #model fit
+# Share of residuals > 0.05 (should be < 50%)
+
+residuals <- as.matrix(residuals[upper.tri((residuals))])
+large_res <- abs(residuals) > 0.05
+sum(large_res)
+sum(large_res)/nrow(residuals)
+
+# Test if residuals are approximately normally distributed
+hist(residuals)
+qqnorm(residuals) 
+qqline(residuals)
+shapiro.test(residuals)
+
+### STEP 3
+
+# Oblique factor rotation (oblimin)
+pc3 <- principal(dat[,q17ident], nfactors = 2, rotate = "oblimin", scores = TRUE)
+print.psych(pc4, cut = 0.3, sort = TRUE) 
+
+# Int: Factors do not correlate -> use varimax as orthogonal analysis
+# see: http://hosted.jalt.org/test/PDF/Brown31.pdf
+
+# Orthogonal factor rotation (varimax)
+pc4 <- principal(dat[,q17ident], nfactors = 2, rotate = "varimax")
+pc4
+print.psych(pc3, cut = 0.3, sort = TRUE)
+
+# Interpretation of Factor Analysis tutorial: https://data.library.virginia.edu/getting-started-with-factor-analysis/
+
+# 4 Factors have high cross-loading with our factor, which variables are these?
+
+q17ident[c(11,7,5,8)]
+
+# 5 und 8 laden gar nicht auf unserem Faktor
+#"eabk085a" # Selbsteinschätzung: Der Umwelt überlegen #
+#"eabk088a" # Selbsteinschätzung: Unabhängig von Umwelt #
+
+# Ist irgendwie eine krasse Itemformulierung, weil das Wort Respektlos stark wertend ist? Vlt. soziale Erwünschtheit
+#"eabk087a" # Selbsteinschätzung: Respektlos gegenüber Umwelt #
+
+
+# WEhmütig und Emotionslos ist bisschen weirde Formulierungen
+#"eabk091a" # Selbsteinschätzung: Wehmütig bezüglich Umwelt #
+
+
+
+#calculate the pca only with relevant variables
+# excluding 5,7,8 and 11 from the factor due to high loadings on another factor
+q17ident_pca <- q17ident[c(1,2,3,4,6,9,10)]
+
+pc4 <- principal(dat[,q17ident_pca], nfactors = 1, rotate = "varimax", scores = TRUE)
+print.psych(pc4, cut = 0.3, sort = TRUE)
+
+# Add factor scores to dataframe 
+dat <- cbind(dat, pc4$scores)
+
+# for now just let´s name the PC1 as ei for (environmental identity)
+dat <- dat %>% rename("ei_scores" = "PC1")
+
+
+### Creating an index as second approach next to using scores
+
+# Calculate the sum of value of the identity (without the weighting of the scores)
+dat$ei_sum <- dat %>% select(all_of(q17ident_pca)) %>% 
+  mutate(ei_sum = rowSums(., na.rm = TRUE)) %>% pull(ei_sum)
+  
+# calculate the NAs for all the variables
+dat$ei_nas <- apply(dat[,q17ident_pca], MARGIN = 1, function(x) sum(is.na(x)))
+
+
+dat[,c("ei_sum","ei_nas")]
+table(dat$ei_nas)
+
+
+# if there are more than 50% Nas don´t calculate the mean, otherwise take the average
+dat <- dat %>% mutate(ei_ind = ifelse(ei_nas > round(length(q17ident_pca)/2), NA, 
+                                  ifelse(ei_nas == 0, ei_sum/length(q17ident_pca),
+                                  ifelse(ei_nas !=0, ei_sum/(length(q17ident_pca)-ei_nas),NA))))
+
+
+# Additive Indexing, problem: Missings can not be handled
+# dat$ei_ind_add <- dat$ei_sum/max(dat$ei_sum)*10
+
+# With this approach I take into account that some values have missings and I´m simply
+# normalizing the mean to a 1-10 Scale
+# dat$ei_ind  <- dat$ei_ind/max(dat$ei_ind, na.rm = TRUE)*10
+
+
+
+hist(dat$ei_index)
+mean(dat$ei_index, na.rm = TRUE)
+sd(dat$ei_index, na.rm = TRUE)
+
+min(dat$ei_sum)
+max(dat$ei_sum)
+
+
+# use this command to make a plausibility check
+
+dat %>% select(all_of(q17ident_pca), ei_sum, ei_nas, ei_ind)
+
+
+#--------------------------------------------------#
+# Reliability Analysis                            
+#--------------------------------------------------#
+
+# Specify subscales according to results of PCA
+identity <- dat[,q17ident_pca]
+salience <- dat[,q17sal]
+prominence <- dat[,q17pro]
+commitment <- dat[,q17com]
+# Test reliability of subscales
+psych::alpha(identity)
+psych::alpha(salience)
+psych::alpha(prominence, keys = c("eabk093a"))
+psych::alpha(commitment, keys = c("eabk101a"))
+# drop item eabk101a
+
+# Now based on these Alphas let´s create our variables
+
+#--------------------------------------------------#
+# Identity Salience                            
+#--------------------------------------------------#
+
+# calculate the rowsums
+dat$sal_sum <- dat %>% select(q17sal) %>% 
+mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
+
+# calculate the NAs
+dat$sal_nas <- apply(dat[,q17sal], MARGIN = 1, function(x) sum(is.na(x)))
+
+# create new variable if NAs < 50%
+dat <- dat %>% mutate(ident_sal = ifelse(sal_nas > 3, NA,
+                            ifelse(sal_nas == 0 | sal_nas !=0, sal_sum/(5-sal_nas),NA)))
+
+
+dat %>% select(q17sal, sal_sum, sal_nas, ident_sal)
+
+#--------------------------------------------------#
+# Identity Prominence                            
+#--------------------------------------------------#
+
+# first let´s recode the one item that is reverse coded
+dat[,"eabk093a"] <-  
+ifelse(dat$eabk093a == 1, 5, 
+ifelse(dat$eabk093a == 2, 4,
+ifelse(dat$eabk093a == 3, 3,
+ifelse(dat$eabk093a == 4, 2,
+ifelse(dat$eabk093a == 5, 1, NA)))))
+
+# calculate the rowsums
+dat$pro_sum <- dat %>% select(q17pro) %>% 
+  mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
+
+# calculate the NAs
+dat$pro_nas <- apply(dat[,q17pro], MARGIN = 1, function(x) sum(is.na(x)))
+
+# create new variable if NAs < 50%
+dat <- dat %>% mutate(ident_pro = ifelse(pro_nas > 2, NA,
+                                  ifelse(pro_nas == 0 | pro_nas !=0, pro_sum/(4-pro_nas),NA)))
+
+dat %>% select(q17pro, pro_sum, pro_nas, ident_pro)
+
+#--------------------------------------------------#
+# Identity commitment                            
+#--------------------------------------------------#
+
+# calculate the rowsums
+dat$com_sum <- dat %>% select(q17com[2:3]) %>% 
+  mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
+
+# calculate the NAs
+dat$com_nas <- apply(dat[,q17com[2:3]], MARGIN = 1, function(x) sum(is.na(x)))
+
+# create new variable if NAs < 50%
+dat <- dat %>% mutate(ident_com = ifelse(com_nas > 1, NA,
+                                   ifelse(com_nas == 0 | com_nas !=0, com_sum/(2-com_nas),NA)))
+
+
+dat %>% select(q17com[2:3], com_sum, com_nas, ident_com)
+
+#--------------------------------------------------#
+# DV: Meat consumption ####                           
+#--------------------------------------------------#
+dat <- dat %>% rename("meat_con" = "ceas097a")
+
+
+
+#--------------------------------------------------#
+# CV: NEP Scale (Ecological Worldview) ####                          
+#--------------------------------------------------#
+q16a <- c(
+#  "dczd001a", # Großstadtnähe Wohngegend 
+  "dczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen C
+  "dczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen A
+  "dczd004a", # NEP-Skala: Folgen von menschlichem Eingriff B
+  "dczd005a", # NEP-Skala: Menschlicher Einfallsreichtum A
+  "dczd006a", # NEP-Skala: Missbrauch der Umwelt durch Menschen B
+  "dczd007a", # NEP-Skala: Genügend natürliche Rohstoffe A
+  "dczd008a", # NEP-Skala: Pflanzen und Tiere gleiches Recht B
+  "dczd009a", # NEP-Skala: Gleichgewicht der Natur stabil genug A
+  "dczd010a", # NEP-Skala: Menschen Naturgesetzen unterworfen B
+  "dczd011a", # NEP-Skala: Umweltkrise stark übertrieben. A
+  "dczd012a", # NEP-Skala: Erde ist wie Raumschiff C
+  "dczd013a", # NEP-Skala: Menschen zur Herrschaft über Natur bestimmt A
+  "dczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich B
+  "dczd015a", # NEP-Skala: Natur kontrollieren A
+  "dczd016a" # NEP-Skala: Umweltkatastrophe B
+)
+
+#A: human domination of nature (RC2)
+#B: balance of nature (RC1)
+#C: limits to growth (RC3)
+# Recoding the variable so that high score means "high ecological worldview"
+q16a_nep_rec <- q16a[c(1,3,5,7,9,11,13,15)]
+
+dat[, q16a_nep_rec] <- lapply(dat[, q16a_nep_rec], function(i) 
+ifelse(i == 1, 5, 
+ifelse(i == 2, 4,
+ifelse(i == 3, 3,
+ifelse(i == 4, 2,
+ifelse(i == 5, 1, NA))))))
+
+#--------------------------------------------------#
+# PCA (Environmental Identity)                             
+#--------------------------------------------------#
 
 # STEP 1
 
 # Inspect correlation matrix
 
-raq_matrix <- cor(dat[,q17ident], use="complete.obs") #create matrix
+raq_matrix <- cor(dat[,q16a], use="complete.obs") #create matrix
 round(raq_matrix,3)
 
 # Low correlations by variable
@@ -355,14 +645,13 @@ det(raq_matrix) > 0.00001
 
 # Compute MSA statstic (should be > 0.5)
 
-KMO(dat[,q17ident])
+KMO(dat[,q16a])
 
 # STEP 2
 
 # Deriving factors
-
 # Find the number of factors to extract
-pc1 <- principal(dat[,q17ident], nfactors = 11, rotate = "none")
+pc1 <- principal(dat[,q16a], nfactors = 15, rotate = "none")
 pc1
 
 plot(pc1$values, type="b")
@@ -370,7 +659,7 @@ abline(h=1, lty=2)
 
 # Run model with appropriate number of factors
 
-pc2 <- principal(dat[,q17ident], nfactors = 2, rotate = "none")
+pc2 <- principal(dat[,q16a], nfactors = 1, rotate = "none")
 pc2
 # Inspect residuals
 
@@ -402,155 +691,166 @@ qqline(residuals)
 shapiro.test(residuals)
 
 # STEP 3
-
 # Orthogonal factor rotation 
-
-pc3 <- principal(dat[,q17ident], nfactors = 2, rotate = "varimax")
+pc3 <- principal(dat[,q16a], nfactors = 3, rotate = "varimax")
 pc3
-print.psych(pc3, cut = 0.3, sort = TRUE)
-
-# Oblique factor rotation 
-
-pc4 <- principal(dat[,q17ident], nfactors = 2, rotate = "oblimin", scores = TRUE)
-print.psych(pc4, cut = 0.3, sort = TRUE) # QUESTION: What to do with the other factors?
-
-#calculate the pca only with relevant variables
-pc4 <- principal(dat[,q17ident[c(1,2,3,4,6,7,9,10,11)]], nfactors = 1, rotate = "oblimin", scores = TRUE)
-print.psych(pc4, cut = 0.3, sort = TRUE)
-
-# Add factor scores to dataframe 
-dat <- cbind(dat, pc4$scores)
-
-# for now just let´s name the TC1 as ei for (environmental identity)
-
-dat <- dat %>% rename("ei_fac" = "PC1")
+print.psych(pc3, cut = 0.3)
 
 
-# excluding 5 and 8 from the factor due to high loadings on another factor
+# Orthogonal factor rotation without the 07 item, which loads to high on other factors
+pc3 <- principal(dat[,q16a[-6]], nfactors = 3, rotate = "varimax")
+pc3
+print.psych(pc3, cut = 0.3)
 
-dat$ei2 <- dat %>% select(q17ident[c(1,2,3,4,6,7,9,10,11)]) %>% 
-  mutate(ei2 = rowSums(., na.rm = TRUE)) %>% pull(ei2)
-  
+#--------------------------------------------------#
+# Reliability Analysis                            
+#--------------------------------------------------#
 
-dat$nas <- apply(dat[,q17ident[c(1,2,3,4,6,7,9,10,11)]], MARGIN = 1, function(x) sum(is.na(x)))
+### Three Dimensional NEP Scale as suggested by PCA
+
+# Specify subscales according to results of PCA
+#A: human domination of nature (RC2)
+#B: balance of nature (RC1)
+#C: limits to growth (RC3)
+nep_dom <- dat[,q16a[c(2,4,8,10,12,14)]]
+nep_bal <- dat[,q16a[c(3,5,7,9,13,15)]]
+nep_gro <- dat[,q16a[c(1,11)]]
+
+# Test reliability of subscales
+psych::alpha(nep_dom)
+psych::alpha(nep_bal)
+psych::alpha(nep_gro)
+
+### One Dimensional NEP Scale
+nep <- dat[,q16a]
+
+# Test reliability of subscales
+psych::alpha(nep)
+
+#--------------------------------------------------#
+# Constructing different NEP Variables                            
+#--------------------------------------------------#
+
+### Three Dimensional
+
+#get the scores from the PCA in our original data frame
+dat <- cbind(dat, pc3$scores)
+
+# give factors meaningful names
+
+dat <- dat %>% rename("nep_bal" = "RC1",
+                      "nep_dom" = "RC2",
+                      "nep_gro" = "RC3")
 
 
-dat[,c("ei2","nas")]
+### One Dimensional Summing Index
+# Interesting comment on what to take https://www.theanalysisfactor.com/index-score-factor-analysis/
 
-table(dat$nas)
+
+# Factor Scores
+# Orthogonal factor rotation without the 07 item, which loads to high on other factors
+pc3 <- principal(dat[,q16a[-6]], nfactors = 1, rotate = "none")
+pc3
+print.psych(pc3, cut = 0.3)
+
+# now bind this only One Dimensional NEP factor to our original data frame
+dat <- cbind(dat, pc3$scores)
+
+dat <- dat %>% rename("nep_scores" = "PC1")
 
 
-# if there are more than 5 Nas don´t calculate the mean, otherwise take the average
-dat <- dat %>% mutate(ei3 = ifelse(nas > 5, NA, 
-                            ifelse(nas == 0, ei2/9,
-                            ifelse(nas !=0, ei2/(9-nas),NA))))
+# Factor-Based Scores (Summed up and standardized to 1-10)
+# excluding item 6 to keep things consistent (Might need to reverse this, depending on how I proceed)
+dat$nep_sum <- dat %>% select(q16a[-6]) %>%
+  mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
+
+dat$nep_nas <- apply(dat[,q16a[-6]], MARGIN = 1, function(x) sum(is.na(x)))
+
+# quick check
+dat[,c("nep_index","nep_nas")]
+
+# if there are more than 50% Nas don´t calculate the mean, otherwise take the average
+dat <- dat %>% mutate(nep_index = ifelse(nep_nas > 7, NA, 
+                                 ifelse(nep_nas == 0, nep_sum/14,
+                                 ifelse(nep_nas !=0, nep_sum/(14-nas),NA))))
+
+
+dat %>% select(q16a[-6],"nep_nas","nep_index")
+
+
+
+
+
+
+
+
+
+# we will use all variables as in Dunlap(2000) stated
+
+# Check for Nas
+dat$nep_nas <- apply(dat[,q16a], MARGIN = 1, function(x) sum(is.na(x)))
+
+# if there are more than 50% Nas don´t calculate the mean, otherwise take the average
+dat <- dat %>% mutate(nep = ifelse(nas > 7, NA, 
+                            ifelse(nas == 0, ei_sum/15,
+                            ifelse(nas !=0, ei_sum/(15-nas),NA))))
+
+
+dat %>% select(q16a, nep_nas)
+
 
 hist(dat$ei3)
 mean(dat$ei3, na.rm = TRUE)
 sd(dat$ei3, na.rm = TRUE)
 
-### create the index
 
-# STEP 4
 
-# Compute factor scores 
 
-head(pc4$scores)
+
 
 
 #================================================#
-# Reliability Analysis ####
+# Additional Variable Constructions ####
 #================================================#
 
-# Specify subscales according to results of PCA
+#--------------------------------------------------#
+# create a new variable for age                             
+#--------------------------------------------------#
 
-identity <- dat[,q17ident[c(1,2,3,4,6,7,9,10,11)]]
-salience <- dat[,q17sal]
-prominence <- dat[,q17pro]
-commitment <- dat[,q17com]
-# Test reliability of subscales
-psych::alpha(identity)
-psych::alpha(salience)
-psych::alpha(prominence, keys = c("eabk093a"))
-psych::alpha(commitment, keys = c("eabk101a"))
-# drop item eabk101a
+dat$age <- 2020-dat$a11d056b
 
-#================================================#
-# Variable Construction ####
-#================================================#
-
-# Now based on these Alphas let´s create our variables
-### Identity Salience
-
-# calculate the rowsums
-dat$sal_sum <- dat %>% select(q17sal) %>% 
-mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
-
-# calculate the NAs
-dat$sal_nas <- apply(dat[,q17sal], MARGIN = 1, function(x) sum(is.na(x)))
-
-# create new variable if NAs < 50%
-dat <- dat %>% mutate(ident_sal = ifelse(sal_nas > 3, NA,
-                            ifelse(sal_nas == 0 | sal_nas !=0, sal_sum/(5-sal_nas),NA)))
+#--------------------------------------------------#
+# Angemessenheit (Injunctive norm of eating meat)
+#--------------------------------------------------#
+dat <- dat %>% rename("meat_norm" = "ceas105a")
 
 
-dat %>% select(q17sal, sal_sum, sal_nas, ident_sal)
+table(dat$meat_norm)
 
-### Identity Prominence
+# TODO: Recode
+# 1-2: taeglich
+# 3-4: 3-6 Tage/Woche
+# 5: 1-2 Tage/ Woche
+# 6-7: seltener/ gar nicht
 
-# first let´s recode the one item that is reverse coded
-dat[,"eabk093a"] <-  
-ifelse(dat$eabk093a == 1, 5, 
-ifelse(dat$eabk093a == 2, 4,
-ifelse(dat$eabk093a == 3, 3,
-ifelse(dat$eabk093a == 4, 2,
-ifelse(dat$eabk093a == 5, 1, NA)))))
+### 
 
-# calculate the rowsums
-dat$pro_sum <- dat %>% select(q17pro) %>% 
-  mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
+table(dat$meat_norm, dat$meat_con)
 
-# calculate the NAs
-dat$pro_nas <- apply(dat[,q17pro], MARGIN = 1, function(x) sum(is.na(x)))
+#--------------------------------------------------#
+# Einschätzung Treibhausgase                            
+#--------------------------------------------------#
 
-# create new variable if NAs < 50%
-dat <- dat %>% mutate(ident_pro = ifelse(pro_nas > 2, NA,
-                                  ifelse(pro_nas == 0 | pro_nas !=0, pro_sum/(4-pro_nas),NA)))
-
-dat %>% select(q17pro, pro_sum, pro_nas, ident_pro)
-
-### Identity commitment
-
-# calculate the rowsums
-dat$com_sum <- dat %>% select(q17com[2:3]) %>% 
-  mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
-
-# calculate the NAs
-dat$com_nas <- apply(dat[,q17com[2:3]], MARGIN = 1, function(x) sum(is.na(x)))
-
-# create new variable if NAs < 50%
-dat <- dat %>% mutate(ident_com = ifelse(com_nas > 1, NA,
-                                   ifelse(com_nas == 0 | com_nas !=0, com_sum/(2-com_nas),NA)))
-
-
-dat %>% select(q17com[2:3], com_sum, com_nas, ident_com)
-
-### Angemessenheit
-
-ceas105a
-
-### Einschätzung Treibhausgase
-
-q15bb <- c(
-  "ceas107a", # Einschätzung Treibhausgase: Gemüse und Obst 
-  "ceas108a", # Einschätzung Treibhausgase: Fleisch und Fleischerzeugnisse 
-  "ceas109a", # Einschätzung Treibhausgase: Milch und Milcherzeugnisse 
-  "ceas110a", # Einschätzung Treibhausgase: Öl und Eier 
-  "ceas111a", # Einschätzung Treibhausgase: Zucker, Honig und Kakao 
-  "ceas112a", # Einschätzung Treibhausgase: Reis, Kartoffeln und Hülsenfrüchte 
-  "ceas113a", # Einschätzung Treibhausgase: Getreide und Getreideerzeugnisse
-  "ceas114a" #Diskussionen Treibhausgase und Klimaschutz
-)
+# q15bb <- c(
+#   "ceas107a", # Einschätzung Treibhausgase: Gemüse und Obst 
+#   "ceas108a", # Einschätzung Treibhausgase: Fleisch und Fleischerzeugnisse 
+#   "ceas109a", # Einschätzung Treibhausgase: Milch und Milcherzeugnisse 
+#   "ceas110a", # Einschätzung Treibhausgase: Öl und Eier 
+#   "ceas111a", # Einschätzung Treibhausgase: Zucker, Honig und Kakao 
+#   "ceas112a", # Einschätzung Treibhausgase: Reis, Kartoffeln und Hülsenfrüchte 
+#   "ceas113a", # Einschätzung Treibhausgase: Getreide und Getreideerzeugnisse
+#   "ceas114a" #Diskussionen Treibhausgase und Klimaschutz
+# )
 
 # transform to integers
 dat[,q15bb] <- lapply(dat[,q15bb], function(x) as.integer(x))
@@ -561,58 +861,69 @@ dat[,q15bb] <- lapply(dat[,q15bb], function(x) ifelse(x > 7, NA, x))
 
 # Create a new variable. If meat is ranked as 1st or 2nd place, give it 1 
 # (meaning the person knows about the harm meat does to the environment)
-dat <- dat %>% mutate(know = ifelse(ceas108a %in% c(1,2), 1,0))
+dat <- dat %>% mutate(meat_know = ifelse(ceas108a %in% c(1,2), 1,0))
+dat <- dat %>% mutate(meat_know2 = ifelse(ceas108a %in% c(1), 1,0))
+
+
+prop.table(table(dat$ceas097,dat$meat_know),1)
 
 
 
-lapply(dat[,q15bb], function(x) mean(x, na.rm = TRUE))
+
+#--------------------------------------------------#
+# Mensch und Umwelt Scale  (evtl. noch hinzufügbar)                        
+#--------------------------------------------------#
+# q15c <- c(
+#   "cbaq081a", # Mensch und Umwelt: Umweltverhältnissen für Nachfahren 
+#   "cbaq082a", # Mensch und Umwelt: Umweltkatastrophe 
+#   "cbaq083a", # Mensch und Umwelt: Durch Zeitungsberichte empört und wütend 
+#   "cbaq084a", # Mensch und Umwelt: Grenzen des Wachstums überschritten 
+#   "cbaq085a", # Mensch und Umwelt: Bevölkerung wenig umweltbewusst 
+#   "cbaq086a", # Mensch und Umwelt: Umweltproblem übertrieben 
+#   "cbaq087a", # Mensch und Umwelt: Politiker tun viel zu wenig für den Umweltschutz 
+#   "cbaq088a", # Mensch und Umwelt: Lebensstandard einschränken 
+#   "cbaq089a" # Mensch und Umwelt: Umweltschutzmaßnahmen trotz Arbeitsplatzverlusten
+# )
+
+
+#--------------------------------------------------#
+# Ernsthaftigkeit Klimawandel (1 (not at all serious) - 11 (extremly serious))
+#--------------------------------------------------#
+dat <- dat %>% rename("ekw" = "cczd032a")
+
+#--------------------------------------------------#
+# Einkauf Bio Lebensmittel/ Regionale Lebensmittel                            
+#--------------------------------------------------#
+# 1 Nein, keines
+# 2 Ja, teilweise
+# 3 Ja, (fast) ausschließlich
+# 98 Weiß nicht
+
+dat <- dat %>% rename("lm_bio" = "cczd039a",
+                      "lm_reg" = "cczd040a")
+
+#--------------------------------------------------#
+# Öko Strom                             
+#--------------------------------------------------#
+dat <- dat %>% rename("strom_öko" = "cczd041a")
+# 1 Beziehe ich bereits
+# 2 Habe ich fest vor
+# 3 Vielleicht zukünftig
+# 4 Nein
+# 98 Weiß nicht
+
+#TODO: combine 2 and 3 (Argument: Planung vs. Handlung)
+
+table(dat$strom_öko)
 
 
 
 
-View(select(dat, q15bb))
+#--------------------------------------------------#
+# #Schwierigkeit eigenen Fleischkonsum zu reduzieren                             
+#--------------------------------------------------#
 
-
-
-### NEP Skala
-
-q15d <- c(
-  "cczd001a", # Großstadtnähe Wohngegend
-  "cczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen 
-  "cczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen 
-  "cczd004a", # NEP-Skala: Folgen von menschlichem Eingriff 
-  "cczd005a", # NEP-Skala: Menschlicher Einfallsreichtum 
-  "cczd006a", # NEP-Skala: Missbrauch der Umwelt durch Menschen 
-  "cczd007a", # NEP-Skala: Genügend natürliche Rohstoffe 
-  "cczd008a", # NEP-Skala: Pflanzen und Tiere gleiches Recht 
-  "cczd009a", # NEP-Skala: Gleichgewicht der Natur stabil genug 
-  "cczd010a", # NEP-Skala: Menschen Naturgesetzen unterworfen 
-  "cczd011a", # NEP-Skala: Umweltkrise stark übertrieben. 
-  "cczd012a", # NEP-Skala: Erde ist wie Raumschiff 
-  "cczd013a", # NEP-Skala: Menschen zur Herrschaft über Natur bestimmt 
-  "cczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich 
-  "cczd015a", # NEP-Skala: Natur kontrollieren 
-  "cczd016a") # NEP-Skala: Umweltkatastrophe
-
-
-### Andere umweltfreundliche Aktivitäten
-
-#Nutzung und andere Meinungen
-q15d <- c(
-  "cczd030a", # Meinung Atomausstieg 
-  "cczd031a", # Klimaschutzpolitik - Tempo 
-  "cczd032a", # Ernsthaftigkeit Problem Klimawandel 
-  "cczd033a", # Besitz ÖPNV-Karte 
-  "cczd034a", # Verfügbarkeit Auto 
-  "cczd035a", # Nutzungshäufigkeit: Auto 
-  "cczd036a", # Nutzungshäufigkeit: Fahrrad 
-  "cczd037a", # Nutzungshäufigkeit: Bus oder Bahn in der Region 
-  "cczd038a", # Nutzungshäufigkeit: Bahn auf längeren Strecken 
-  "cczd039a", # Einkauf Bio-Lebensmittel 
-  "cczd040a", # Einkauf Regionale Lebensmittel 
-  "cczd041a" # Bezug Ökostrom
-)
-
+"cbas071a"
 
 
 #================================================#
