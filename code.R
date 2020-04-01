@@ -324,7 +324,15 @@ dat[, q17ident_rec] <- lapply(dat[, q17ident_rec], function(i)
 # PCA (Environmental Identity)                             
 #--------------------------------------------------#
 
+<<<<<<< HEAD
 ### STEP 1
+=======
+#--------------------------------------------------#
+# PCA (Environmental Identity)                             
+#--------------------------------------------------#
+
+# STEP 1
+>>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
 
 # Inspect correlation matrix
 
@@ -442,15 +450,26 @@ print.psych(pc4, cut = 0.3, sort = TRUE)
 # Add factor scores to dataframe 
 dat <- cbind(dat, pc4$scores)
 
+<<<<<<< HEAD
 # for now just let´s name the PC1 as ei for (environmental identity)
 dat <- dat %>% rename("ei_scores" = "PC1")
 
+=======
+# for now just let´s name the TC1 as ei for (environmental identity)
+dat <- dat %>% rename("ei_scores" = "PC1")
+>>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
 
 ### Creating an index as second approach next to using scores
 
+<<<<<<< HEAD
 # Calculate the sum of value of the identity (without the weighting of the scores)
 dat$ei_sum <- dat %>% select(all_of(q17ident_pca)) %>% 
   mutate(ei_sum = rowSums(., na.rm = TRUE)) %>% pull(ei_sum)
+=======
+# excluding 5 and 8 from the factor due to high loadings on another factor
+dat$ei2 <- dat %>% select(q17ident[c(1,2,3,4,6,7,9,10,11)]) %>% 
+  mutate(ei2 = rowSums(., na.rm = TRUE)) %>% pull(ei2)
+>>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
   
 # calculate the NAs for all the variables
 dat$ei_nas <- apply(dat[,q17ident_pca], MARGIN = 1, function(x) sum(is.na(x)))
@@ -459,11 +478,16 @@ dat$ei_nas <- apply(dat[,q17ident_pca], MARGIN = 1, function(x) sum(is.na(x)))
 dat[,c("ei_sum","ei_nas")]
 table(dat$ei_nas)
 
+<<<<<<< HEAD
 
 # if there are more than 50% Nas don´t calculate the mean, otherwise take the average
 dat <- dat %>% mutate(ei_ind = ifelse(ei_nas > round(length(q17ident_pca)/2), NA, 
                                   ifelse(ei_nas == 0, ei_sum/length(q17ident_pca),
                                   ifelse(ei_nas !=0, ei_sum/(length(q17ident_pca)-ei_nas),NA))))
+=======
+dat[,c("ei2","nas")]
+table(dat$nas)
+>>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
 
 
 # Additive Indexing, problem: Missings can not be handled
@@ -473,6 +497,7 @@ dat <- dat %>% mutate(ei_ind = ifelse(ei_nas > round(length(q17ident_pca)/2), NA
 # normalizing the mean to a 1-10 Scale
 # dat$ei_ind  <- dat$ei_ind/max(dat$ei_ind, na.rm = TRUE)*10
 
+<<<<<<< HEAD
 
 
 hist(dat$ei_index)
@@ -494,6 +519,15 @@ dat %>% select(all_of(q17ident_pca), ei_sum, ei_nas, ei_ind)
 
 # Specify subscales according to results of PCA
 identity <- dat[,q17ident_pca]
+=======
+
+#--------------------------------------------------#
+# Reliability Analysis                            
+#--------------------------------------------------#
+
+# Specify subscales according to results of PCA
+identity <- dat[,q17ident[c(1,2,3,4,6,7,9,10,11)]]
+>>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
 salience <- dat[,q17sal]
 prominence <- dat[,q17pro]
 commitment <- dat[,q17com]
@@ -792,8 +826,13 @@ dat$nep_nas <- apply(dat[,q16a], MARGIN = 1, function(x) sum(is.na(x)))
 
 # if there are more than 50% Nas don´t calculate the mean, otherwise take the average
 dat <- dat %>% mutate(nep = ifelse(nas > 7, NA, 
+<<<<<<< HEAD
                             ifelse(nas == 0, ei_sum/15,
                             ifelse(nas !=0, ei_sum/(15-nas),NA))))
+=======
+                            ifelse(nas == 0, ei2/15,
+                            ifelse(nas !=0, ei2/(15-nas),NA))))
+>>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
 
 
 dat %>% select(q16a, nep_nas)
@@ -814,12 +853,15 @@ sd(dat$ei3, na.rm = TRUE)
 #================================================#
 
 #--------------------------------------------------#
+<<<<<<< HEAD
 # create a new variable for age                             
 #--------------------------------------------------#
 
 dat$age <- 2020-dat$a11d056b
 
 #--------------------------------------------------#
+=======
+>>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
 # Angemessenheit (Injunctive norm of eating meat)
 #--------------------------------------------------#
 dat <- dat %>% rename("meat_norm" = "ceas105a")
