@@ -13,6 +13,9 @@
 library(haven)
 library(dplyr)
 
+options(digits = 2)
+options(max.print = 100)
+
 #================================================#
 # Download necessary files ####
 #================================================#
@@ -30,7 +33,7 @@ q16 <-  read_sav("./spss/ZA5665_a1_da-df_v32-0-0.sav")
 demo <- read_sav("./spss/ZA5665_a1_a11-a12_v32-0-0.sav")
 
 #================================================#
-# Grab necessary columns ####
+# Grab necessary demographic variables ####
 #================================================#
 
 id <- "z000001a"
@@ -42,10 +45,27 @@ c(
 "a11d054a", #Geschlecht
 "a11d056b", #Geburtsjahr
 "a11d082b", #Höchster Schulabschluss, inkl. o. A
+"a11d086b", #Beruflicher Ausbildungsabschluss, inkl. o. A
+"a11d081a", #Joint Household
 "a11d097c", #Haushaltseinkommen, 14 Kategorien standard edition
 "a11d096b") #Persönliches Einkommen, 15 Kategorien standard edition
 
 demo <- demo[,c(id, vars)]
+
+q15demo <- 
+  c(
+    "cfzh071a", #Geschlecht
+    "cfzh072c", #Geburtsjahr
+    "cfzh078a", #Höchster Schulabschluss, inkl. o. A
+    "cfzh079a", #Berufsabschluss
+    "cfzh080a", #Anderen Abschluss
+    "cfzh081a", #Universitätsabschluss
+    "cfzh084a", #Aktuell in beruflicher Ausbildung
+    "cfzh077a", #gemeinsamer Haushalt
+    "cfzh090c", #Haushaltseinkommen, 14 Kategorien standard edition
+    "cfzh089b") #Persönliches Einkommen, 15 Kategorien standard edition
+
+
 
 #================================================#
 # Questionnaires from 2015 ####
@@ -157,7 +177,7 @@ q15e <- c("cczc043a") # Sonntagsfrage Wahlentscheidung standard edition
 
 # first we combine all variables in one vector
 
-q15_vars <- c(q15a,q15aa,q15b,q15bb,q15c,q15d,q15e)
+q15_vars <- c(q15demo, q15a,q15aa,q15b,q15bb,q15c,q15d,q15e)
 
 q15 <- q15[,c(id,q15_vars)]
 
@@ -302,7 +322,7 @@ dat$nas <- dat %>%
 dat <- dat %>% filter(nas < length(q17ident))
 
 #================================================#
-# Complex Variable Construction ####
+# COMPLEX VARIABLE CONSTRUCTION ####
 #================================================#
 
 #================================================#
@@ -324,15 +344,7 @@ dat[, q17ident_rec] <- lapply(dat[, q17ident_rec], function(i)
 # PCA (Environmental Identity)                             
 #--------------------------------------------------#
 
-<<<<<<< HEAD
 ### STEP 1
-=======
-#--------------------------------------------------#
-# PCA (Environmental Identity)                             
-#--------------------------------------------------#
-
-# STEP 1
->>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
 
 # Inspect correlation matrix
 
@@ -442,6 +454,8 @@ q17ident[c(11,7,5,8)]
 
 #calculate the pca only with relevant variables
 # excluding 5,7,8 and 11 from the factor due to high loadings on another factor
+
+# QUESTION: Is it wisely to erase the variables with too high cross loadings?
 q17ident_pca <- q17ident[c(1,2,3,4,6,9,10)]
 
 pc4 <- principal(dat[,q17ident_pca], nfactors = 1, rotate = "varimax", scores = TRUE)
@@ -450,26 +464,15 @@ print.psych(pc4, cut = 0.3, sort = TRUE)
 # Add factor scores to dataframe 
 dat <- cbind(dat, pc4$scores)
 
-<<<<<<< HEAD
 # for now just let´s name the PC1 as ei for (environmental identity)
 dat <- dat %>% rename("ei_scores" = "PC1")
 
-=======
-# for now just let´s name the TC1 as ei for (environmental identity)
-dat <- dat %>% rename("ei_scores" = "PC1")
->>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
 
 ### Creating an index as second approach next to using scores
 
-<<<<<<< HEAD
 # Calculate the sum of value of the identity (without the weighting of the scores)
 dat$ei_sum <- dat %>% select(all_of(q17ident_pca)) %>% 
   mutate(ei_sum = rowSums(., na.rm = TRUE)) %>% pull(ei_sum)
-=======
-# excluding 5 and 8 from the factor due to high loadings on another factor
-dat$ei2 <- dat %>% select(q17ident[c(1,2,3,4,6,7,9,10,11)]) %>% 
-  mutate(ei2 = rowSums(., na.rm = TRUE)) %>% pull(ei2)
->>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
   
 # calculate the NAs for all the variables
 dat$ei_nas <- apply(dat[,q17ident_pca], MARGIN = 1, function(x) sum(is.na(x)))
@@ -478,16 +481,11 @@ dat$ei_nas <- apply(dat[,q17ident_pca], MARGIN = 1, function(x) sum(is.na(x)))
 dat[,c("ei_sum","ei_nas")]
 table(dat$ei_nas)
 
-<<<<<<< HEAD
 
 # if there are more than 50% Nas don´t calculate the mean, otherwise take the average
 dat <- dat %>% mutate(ei_ind = ifelse(ei_nas > round(length(q17ident_pca)/2), NA, 
                                   ifelse(ei_nas == 0, ei_sum/length(q17ident_pca),
                                   ifelse(ei_nas !=0, ei_sum/(length(q17ident_pca)-ei_nas),NA))))
-=======
-dat[,c("ei2","nas")]
-table(dat$nas)
->>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
 
 
 # Additive Indexing, problem: Missings can not be handled
@@ -497,7 +495,6 @@ table(dat$nas)
 # normalizing the mean to a 1-10 Scale
 # dat$ei_ind  <- dat$ei_ind/max(dat$ei_ind, na.rm = TRUE)*10
 
-<<<<<<< HEAD
 
 
 hist(dat$ei_index)
@@ -508,7 +505,7 @@ min(dat$ei_sum)
 max(dat$ei_sum)
 
 
-# use this command to make a plausibility check
+# make a plausibility check
 
 dat %>% select(all_of(q17ident_pca), ei_sum, ei_nas, ei_ind)
 
@@ -517,29 +514,30 @@ dat %>% select(all_of(q17ident_pca), ei_sum, ei_nas, ei_ind)
 # Reliability Analysis                            
 #--------------------------------------------------#
 
-# Specify subscales according to results of PCA
 identity <- dat[,q17ident_pca]
-=======
+psych::alpha(identity)
+
+
+
+#================================================#
+# IV2: Salience, Prominence und Commitment  ####
+#================================================#
+
 
 #--------------------------------------------------#
-# Reliability Analysis                            
+# Reliability Analysis                             
 #--------------------------------------------------#
-
 # Specify subscales according to results of PCA
-identity <- dat[,q17ident[c(1,2,3,4,6,7,9,10,11)]]
->>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
 salience <- dat[,q17sal]
 prominence <- dat[,q17pro]
 commitment <- dat[,q17com]
 # Test reliability of subscales
-psych::alpha(identity)
 psych::alpha(salience)
 psych::alpha(prominence, keys = c("eabk093a"))
-psych::alpha(commitment, keys = c("eabk101a"))
-# drop item eabk101a
+psych::alpha(commitment, keys = c("eabk101a")) # Int: drop item eabk101a
+
 
 # Now based on these Alphas let´s create our variables
-
 #--------------------------------------------------#
 # Identity Salience                            
 #--------------------------------------------------#
@@ -553,7 +551,7 @@ dat$sal_nas <- apply(dat[,q17sal], MARGIN = 1, function(x) sum(is.na(x)))
 
 # create new variable if NAs < 50%
 dat <- dat %>% mutate(ident_sal = ifelse(sal_nas > 3, NA,
-                            ifelse(sal_nas == 0 | sal_nas !=0, sal_sum/(5-sal_nas),NA)))
+                     ifelse(sal_nas == 0 | sal_nas !=0, sal_sum/(5-sal_nas),NA)))
 
 
 dat %>% select(q17sal, sal_sum, sal_nas, ident_sal)
@@ -601,10 +599,28 @@ dat <- dat %>% mutate(ident_com = ifelse(com_nas > 1, NA,
 
 dat %>% select(q17com[2:3], com_sum, com_nas, ident_com)
 
+# rename the eabk101a variable for further use 
+
+dat <- dat %>% rename("envorga" = "eabk101a")
+
 #--------------------------------------------------#
 # DV: Meat consumption ####                           
 #--------------------------------------------------#
 dat <- dat %>% rename("meat_con" = "ceas097a")
+
+# Recoding meat consumption so a low number means low meat consumption
+
+dat[,"meat_con"] <-  
+ifelse(dat$meat_con == 1, 7, 
+ifelse(dat$meat_con == 2, 6,
+ifelse(dat$meat_con == 3, 5,
+ifelse(dat$meat_con == 4, 4,
+ifelse(dat$meat_con == 5, 3,
+ifelse(dat$meat_con == 6, 2,
+ifelse(dat$meat_con == 7, 1,NA)))))))
+
+# overview of cases
+prop.table(table(dat$meat_con))
 
 
 
@@ -693,7 +709,7 @@ abline(h=1, lty=2)
 
 # Run model with appropriate number of factors
 
-pc2 <- principal(dat[,q16a], nfactors = 1, rotate = "none")
+pc2 <- principal(dat[,q16a], nfactors = 3, rotate = "none")
 pc2
 # Inspect residuals
 
@@ -710,8 +726,8 @@ ssr <- (sum(residuals[upper.tri((residuals))]^2)) #sum of squared residuals
 ssc <- (sum(raq_matrix[upper.tri((raq_matrix))]^2)) #sum of squared correlations
 ssr/ssc #ratio of ssr and ssc
 1-(ssr/ssc) #model fit
-# Share of residuals > 0.05 (should be < 50%)
 
+# Share of residuals > 0.05 (should be < 50%)
 residuals <- as.matrix(residuals[upper.tri((residuals))])
 large_res <- abs(residuals) > 0.05
 sum(large_res)
@@ -726,7 +742,7 @@ shapiro.test(residuals)
 
 # STEP 3
 # Orthogonal factor rotation 
-pc3 <- principal(dat[,q16a], nfactors = 3, rotate = "varimax")
+pc3 <- principal(dat[,q16a], nfactors = 3, rotate = "oblimin")
 pc3
 print.psych(pc3, cut = 0.3)
 
@@ -777,13 +793,24 @@ dat <- dat %>% rename("nep_bal" = "RC1",
                       "nep_gro" = "RC3")
 
 
-### One Dimensional Summing Index
-# Interesting comment on what to take https://www.theanalysisfactor.com/index-score-factor-analysis/
 
+#--------------------------------------------------#
+# One Dimensional Summing Index                             
+#--------------------------------------------------#
+
+# we will use all variables as in Dunlap(2000) stated
+
+# Test reliability of subscales
+q16a_ind <- q16a
+
+nep <- dat[,q16a_ind]
+psych::alpha(nep)
+
+# Interesting comment on what to take https://www.theanalysisfactor.com/index-score-factor-analysis/
 
 # Factor Scores
 # Orthogonal factor rotation without the 07 item, which loads to high on other factors
-pc3 <- principal(dat[,q16a[-6]], nfactors = 1, rotate = "none")
+pc3 <- principal(dat[,q16a], nfactors = 1, rotate = "none")
 pc3
 print.psych(pc3, cut = 0.3)
 
@@ -795,73 +822,31 @@ dat <- dat %>% rename("nep_scores" = "PC1")
 
 # Factor-Based Scores (Summed up and standardized to 1-10)
 # excluding item 6 to keep things consistent (Might need to reverse this, depending on how I proceed)
-dat$nep_sum <- dat %>% select(q16a[-6]) %>%
+
+
+# creating a sum over all the selected items
+dat$nep_sum <- dat %>% select(q16a_ind) %>%
   mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
 
-dat$nep_nas <- apply(dat[,q16a[-6]], MARGIN = 1, function(x) sum(is.na(x)))
+# counting the NAs
+dat$nep_nas <- apply(dat[,q16a_ind], MARGIN = 1, function(x) sum(is.na(x)))
 
 # quick check
-dat[,c("nep_index","nep_nas")]
+dat[,c(q16a_ind, "nep_sum", "nep_nas")]
 
 # if there are more than 50% Nas don´t calculate the mean, otherwise take the average
-dat <- dat %>% mutate(nep_index = ifelse(nep_nas > 7, NA, 
-                                 ifelse(nep_nas == 0, nep_sum/14,
-                                 ifelse(nep_nas !=0, nep_sum/(14-nas),NA))))
+dat <- dat %>% mutate(nep_ind = ifelse(nep_nas > round(length(q16a_ind)/2)  , NA, 
+                                 ifelse(nep_nas == 0, nep_sum/length(q16a_ind),
+                                 ifelse(nep_nas !=0, nep_sum/(length(q16a_ind)-nep_nas),NA))))
 
 
-dat %>% select(q16a[-6],"nep_nas","nep_index")
-
-
-
-
-
-
-
-
-
-# we will use all variables as in Dunlap(2000) stated
-
-# Check for Nas
-dat$nep_nas <- apply(dat[,q16a], MARGIN = 1, function(x) sum(is.na(x)))
-
-# if there are more than 50% Nas don´t calculate the mean, otherwise take the average
-dat <- dat %>% mutate(nep = ifelse(nas > 7, NA, 
-<<<<<<< HEAD
-                            ifelse(nas == 0, ei_sum/15,
-                            ifelse(nas !=0, ei_sum/(15-nas),NA))))
-=======
-                            ifelse(nas == 0, ei2/15,
-                            ifelse(nas !=0, ei2/(15-nas),NA))))
->>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
-
-
-dat %>% select(q16a, nep_nas)
-
-
-hist(dat$ei3)
-mean(dat$ei3, na.rm = TRUE)
-sd(dat$ei3, na.rm = TRUE)
-
-
-
-
-
+dat %>% select(q16a_ind,"nep_sum","nep_nas","nep_ind")
 
 
 #================================================#
-# Additional Variable Constructions ####
+# ADDITIONAL VARIABLE CONSTRUCTION ####
 #================================================#
-
 #--------------------------------------------------#
-<<<<<<< HEAD
-# create a new variable for age                             
-#--------------------------------------------------#
-
-dat$age <- 2020-dat$a11d056b
-
-#--------------------------------------------------#
-=======
->>>>>>> 02ff97c6d9e3497f6dead92a15d44a81d810841b
 # Angemessenheit (Injunctive norm of eating meat)
 #--------------------------------------------------#
 dat <- dat %>% rename("meat_norm" = "ceas105a")
@@ -869,11 +854,17 @@ dat <- dat %>% rename("meat_norm" = "ceas105a")
 
 table(dat$meat_norm)
 
-# TODO: Recode
-# 1-2: taeglich
-# 3-4: 3-6 Tage/Woche
-# 5: 1-2 Tage/ Woche
-# 6-7: seltener/ gar nicht
+# Recoding the variable
+#4:  1-2: taeglich
+#3:  3-4: 3-6 Tage/Woche
+#2:  5: 1-2 Tage/ Woche
+#1:  6-7: seltener/ gar nicht
+
+dat[,"meat_norm"] <-  
+ifelse(dat$meat_norm %in% c(1:2), 4, 
+ifelse(dat$meat_norm %in% c(3:4), 3,
+ifelse(dat$meat_norm == 5, 2,
+ifelse(dat$meat_norm %in% c(6:7), 1, NA))))
 
 ### 
 
@@ -901,16 +892,19 @@ dat[,q15bb] <- lapply(dat[,q15bb], function(x) as.integer(x))
 dat[,q15bb] <- lapply(dat[,q15bb], function(x) ifelse(x > 7, NA, x))
 
 
-# Create a new variable. If meat is ranked as 1st or 2nd place, give it 1 
+# Create a new variable. If meat is ranked as 1st OR 2nd place and milk is place 1, give it 1 
 # (meaning the person knows about the harm meat does to the environment)
-dat <- dat %>% mutate(meat_know = ifelse(ceas108a %in% c(1,2), 1,0))
-dat <- dat %>% mutate(meat_know2 = ifelse(ceas108a %in% c(1), 1,0))
+dat <- dat %>% mutate(meat_know = ifelse(ceas108a == 1, 1,
+                                  ifelse(ceas108a == 2 & ceas109a == 1,1,0)))
 
+# Other Code that was tested (can be deleted if happy with results)
+#dat <- dat %>% mutate(meat_know3 = ifelse(ceas108a %in% c(1,2), 1,0))
+#dat <- dat %>% mutate(meat_know2 = ifelse(ceas108a %in% c(1), 1,0))
 
-prop.table(table(dat$ceas097,dat$meat_know),1)
+table(dat$meat_know)
 
-
-
+# quick check whether it worked as intended
+#dat %>% select(ceas108a, ceas109a, meat_know3) %>% filter(ceas109a == 1, meat_know3 == 1)
 
 #--------------------------------------------------#
 # Mensch und Umwelt Scale  (evtl. noch hinzufügbar)                        
@@ -933,6 +927,8 @@ prop.table(table(dat$ceas097,dat$meat_know),1)
 #--------------------------------------------------#
 dat <- dat %>% rename("ekw" = "cczd032a")
 
+table(dat$ekw)
+
 #--------------------------------------------------#
 # Einkauf Bio Lebensmittel/ Regionale Lebensmittel                            
 #--------------------------------------------------#
@@ -944,28 +940,352 @@ dat <- dat %>% rename("ekw" = "cczd032a")
 dat <- dat %>% rename("lm_bio" = "cczd039a",
                       "lm_reg" = "cczd040a")
 
+dat[, c("lm_bio", "lm_reg")] <- lapply(dat[, c("lm_bio", "lm_reg")], function(i) 
+ifelse(i == 1, 0,
+ifelse(i %in% c(2,3), 1,
+ifelse(i == 98, NA, NA))))
+
+table(dat$lm_bio)
+
 #--------------------------------------------------#
 # Öko Strom                             
 #--------------------------------------------------#
 dat <- dat %>% rename("strom_öko" = "cczd041a")
+
+dat[,"strom_öko"] <-  
+ifelse(dat$strom_öko == 1, 3, 
+ifelse(dat$strom_öko %in% c(2,3), 2,
+ifelse(dat$strom_öko == 4, 1, NA)))
+
+table(dat$strom_öko)
 # 1 Beziehe ich bereits
 # 2 Habe ich fest vor
 # 3 Vielleicht zukünftig
 # 4 Nein
 # 98 Weiß nicht
 
-#TODO: combine 2 and 3 (Argument: Planung vs. Handlung)
-
 table(dat$strom_öko)
 
+#--------------------------------------------------#
+# #Schwierigkeit eigenen Fleischkonsum zu reduzieren                            
+#--------------------------------------------------#
 
+### Comment: Lasse ich erstmal aus, könnte vielleicht später noch relevant werden
+
+#dat <- dat %>% rename("meat_redu" = "cbas071a")
+
+
+#================================================#
+# SOCIODEMOGRAPHIC VARIABLE CONSTRUCTION ####
+#================================================#
+
+### Initial Inverview Sociodemographics
+
+# "a11d054a", #Geschlecht
+# "a11d056b", #Geburtsjahr
+# "a11d082b", #Höchster Schulabschluss, inkl. o. A
+# "a11d086b", Beruflicher Ausbildungsabschluss, inkl. o. A
+# "a11d097c", #Haushaltseinkommen, 14 Kategorien standard edition
+# "a11d096b") #Persönliches Einkommen, 15 Kategorien standard edition
+
+### 2015 Interview Demographics
+
+#q15demo <- 
+#  c(
+#    "cfzh071a", #Geschlecht
+#    "cfzh072c", #Geburtsjahr
+#    "cfzh078a", #Höchster Schulabschluss, inkl. o. A
+#    "cfzh079a", #Berufsabschluss
+#    "cfzh081a", #Universitätsabschluss
+#    "cfzh084a", #Aktuell in beruflicher Ausbildung
+#    "cfzh090c", #Haushaltseinkommen, 14 Kategorien standard edition
+#    "cfzh089b") #Persönliches Einkommen, 15 Kategorien standard edition
+
+#--------------------------------------------------#
+# Sex                             
+#--------------------------------------------------#
+
+# due to changes in the sex throughout the survey, I decide to take the most recent 
+# sex interpretation, if there is none available, I take the one from the initial 
+# interview
+
+dat$sex <-   
+with(dat, 
+ifelse(is.na(cfzh071a), a11d054a,
+ifelse(cfzh071a != a11d054a, cfzh071a, cfzh071a)))
+
+dat %>% select(cfzh071a, a11d054a, sex) %>% filter(is.na(cfzh071a))
+
+#--------------------------------------------------#
+# create a new variable for age                             
+#--------------------------------------------------#
+dat$age <- 2020-dat$a11d056b
 
 
 #--------------------------------------------------#
-# #Schwierigkeit eigenen Fleischkonsum zu reduzieren                             
+# Income (Household and Personal)                             
 #--------------------------------------------------#
 
-"cbas071a"
+### Step 1: harmonize the income categories 
+
+# househould income
+
+# recoding the initial household income, so that the categories match with the most recent version
+dat <- dat %>% 
+  mutate(a11d097c = ifelse(a11d097c %in% c(1:2), 1,
+                    ifelse(a11d097c %in% c(3:4), 2,
+                    ifelse(a11d097c %in% c(5:6), 3,
+                    ifelse(a11d097c %in% c(7:8), 4,
+                    ifelse(a11d097c %in% c(9:10), 5,
+                    ifelse(a11d097c %in% c(11), 6,
+                    ifelse(a11d097c %in% c(12), 7,
+                    ifelse(a11d097c %in% c(13), 8,
+                    ifelse(a11d097c %in% c(14), 9, a11d097c))))))))))
+
+#dat$a11d097c
+#dat$cfzh090c
+table(dat$a11d097c, useNA = "ifany")
+table(dat$cfzh090c, useNA = "ifany")
+
+
+# personal income
+#dat$a11d096b
+#dat$cfzh089b
+
+table(dat$a11d096b, useNA = "ifany")
+table(dat$cfzh089b, useNA = "ifany")
+# Joint household
+#dat$a11d081a
+#dat$cfzh077a
+
+# setting 98 to NA, because we can´t get any information from it
+vars <- c("a11d097c", "cfzh090c", "a11d096b", "cfzh089b")
+dat[,vars] <- lapply(dat[,vars], function(x) ifelse(x == 98, NA, x))
+
+#dat %>% select(a11d097c, a11d096b, cfzh090c, cfzh089b, income_hh, income_p)
+
+### step2: combine the income data (if there is none for 2015, use the one from the initial interview)
+
+dat$income_hh <- with(dat, ifelse(is.na(cfzh090c), a11d097c, cfzh090c))
+dat$income_p <- with(dat, ifelse(is.na(cfzh089b), a11d096b, cfzh089b))
+
+### step3: deal with cases that don´t have a own personal income
+
+# first let´s filter out people who have no information provided for either income
+# convert househould categories to private income categories as close as possible
+
+dat <- dat %>% mutate(income_p = ifelse(income_p == 97 & income_hh == 1, 2,
+                                 ifelse(income_p == 97 & income_hh == 2, 3,
+                                 ifelse(income_p == 97 & income_hh == 3, 4,
+                                 ifelse(income_p == 97 & income_hh == 4, 5,
+                                 ifelse(income_p == 97 & income_hh == 5, 7,
+                                 ifelse(income_p == 97 & income_hh == 6, 9,
+                                 ifelse(income_p == 97 & income_hh == 7, 10,
+                                 ifelse(income_p == 97 & income_hh == 8, 12,
+                                 ifelse(income_p == 97 & income_hh == 9, 13,
+                                 ifelse(income_p == 97 & is.na(income_hh), NA, income_p)))))))))))
+
+table(dat$income_p, useNA = "ifany")
+table(dat$income_hh, useNA = "ifany")
+
+dat %>% select(income_p, income_hh)
+
+
+#--------------------------------------------------#
+# Highest educational degree (ISCED 1997)                             
+#--------------------------------------------------#
+
+table(dat$a11d082b, useNA = "ifany")
+table(dat$cfzh078a, useNA = "ifany")
+
+
+dat <- dat %>% rename("edu" = "cfzh078a",
+                      "job" = "cfzh079a",
+                      "uni" = "cfzh081a")
+
+#####
+### edu 
+
+#1 Schüler/-in
+#2 Von der Schule abgegangen ohne Abschluss
+#3 Abschluss nach höchstens 7 Jahren Schulbesuch (im Ausland)
+#4 Polytechnische Oberschule DDR, Abschluss 8. oder 9. Klasse
+#5 Polytechnische Oberschule DDR, Abschluss 10. Klasse
+#6 Hauptschulabschluss, Volksschulabschluss
+#7 Realschulabschluss, Mittlere Reife
+#8 Fachhochschulreife
+#9 Abitur, allgemeine oder fachgebundene Hochschulreife
+
+### job
+
+#1 Keinen beruflichen Ausbildungsabschluss
+#2 Anlernausbildung oder ein berufliches Praktikum
+#3 Berufsvorbereitungsjahr oder Berufsgrundbildungsjahr
+#4 Abgeschlossene Lehre, Berufsausbildung im dualen System
+#5 Abschluss einer Berufsfachschule, Kollegschule
+#6 Laufbahnprüfung für den mittleren Dienst
+#7 Abschluss einer einjährigen Schule des Gesundheitswesens
+#8 Abschluss einer zwei- oder dreijährigen Schule des Gesundheitswesens
+#9 Abschluss einer Ausbildungsstätte/ Schule für Erzieher/-innen
+#10 Meister/-in, Techniker/-in oder gleichwertigen Fachschulabschluss
+#11 Abschluss einer Fachschule DDR
+#12 Abschluss einer Fachakademie (nur in Bayern)
+#13 Anderer beruflicher Abschluss
+
+### uni
+
+#1 Keinen Abschluss einer (Fach-)Hochschule oder Universität
+#2 Abschluss einer Berufsakademie
+#3 Abschluss einer Verwaltungsfachhochschule
+#4 Abschluss einer Fachhochschule
+#5 Abschluss einer Universität
+
+#####
+
+addmargins(table(dat$edu, dat$job))
+
+table(dat$edu)
+
+# If respondents used 13 for job, we can´t be sure what ISCED to give, so we treat it as NA
+
+dat$job[dat$job %in% 13] <- NA
+
+dat$isced_cf <-
+with(dat,
+ifelse(job %in% c(8:12) | uni %in% c(2:5), 5,
+ifelse(job %in% c(4:7) & edu %in% c(8:9), 4,
+ifelse(is.na(job) & edu %in% c(8:9) | job %in% c(1:3) & edu %in% c(8:9) | job %in% c(4:7) & edu %in% c(1:7) | job %in% c(4:7) & is.na(edu), 3,
+ifelse(is.na(job) & edu %in% c(3:7) | job == 1 & edu %in% c(3:7) | job %in% c(2:3) & edu %in% c(1:7), 2, 
+ifelse(is.na(job) & edu %in% c(1:2) | job == 1 & edu %in% c(1,2), 1,
+ifelse(is.na(job) & is.na(edu), NA, NA))))))
+)
+
+
+#--------------------------------------------------#
+# Construction of ISCED from initial dataset                             
+#--------------------------------------------------#
+
+#####
+
+# now get the isced for the initial interview to eventually fill up the missings
+# unfortunately the items were different at the beginning
+
+
+#1 Schüler/-in
+#Student
+#2 Von der Schule abgegangen ohne Hauptschulabschluss
+#Left school without degree of a lower secondary school
+
+#3 Hauptschulabschluss
+#Lower secondary school
+#4 Realschulabschluss
+#Secondary school
+#5 Polytechnische Oberschule DDR, Abschluss 8.oder 9. Klasse
+#Polytechnic secondary school GDR, Degree 8th or 9th grade
+#6 Polytechnische Oberschule DDR, Abschluss 10. Klasse
+#Polytechnic secondary school GDR, Degree 10th grade
+
+#7 Fachhochschulreife, Fachoberschule
+#Advanced technical college certificate
+#8 Abitur, allgemeine oder fachgebundene Hochschulreife
+#General qualification for university entrance
+#9 Anderer Schulabschluss
+#Other degree
+
+a11d086b
+
+#1 Noch in beruflicher Ausbildung
+#In vocational training
+#2 Student/-in
+#Student
+#3 Schüler/-in an berufsorientiertre Aufbau-, Fachschule o. Ä.
+#Student in a additional training course or vocational school
+
+#4 Kein beruflicher Abschluss, nicht beruflicher Ausbildung
+#Not in vocational training/study
+
+#5 Beruflich-betriebliche Berufsausbildung
+#Professional-occupational vocational training
+#6 Beruflich-schulische Ausbildung
+#Professional-educational vocational training
+
+#7 Ausbildung an Fachschule der DDR
+#Degree of a college GDR
+#8 Ausbildung an Fach-, Meister-, Technikerschule,Berufs- oder
+#Fachakademie
+#Trainingat a college,master,technical school, vocational- or professional school
+#9 Fachhochschulabschluss
+#Technical College degree
+#10 Universitätsabschluss
+#University degree
+
+#11 Anderer beruflicher Abschluss
+#Other vocational education
+
+#####
+
+dat <- dat %>% rename("edu2" = "a11d082b",
+                      "job2" = "a11d086b")
+
+dat$isced_in <- 
+with(dat,
+ifelse(job2 %in% c(7:10), 5,      
+ifelse(job2 %in% c(5:6,11) & edu2 %in% c(7:8), 4,    
+ifelse(job2 %in% c(5:6,11) & edu2 %in% c(2:6,9) | job2 %in% c(1,3,4) & edu2 %in% c(7:8) | job2 == 2 & edu2 %in% c(7:8), 3,  
+ifelse(job2 %in% c(1,3,4) & edu2 %in% c(3:6,9), 2,   
+ifelse(job2 %in% c(1,3,4) & edu2 %in% c(1:2) | is.na(job2) & edu2 == 1, 1, NA))))))
+
+
+dat %>% select(job2, edu2, isced_in) %>% filter(is.na(isced_in))
+
+# comarison of ISCED, now let´s take a isced value from the most recent demographic data,
+# if there is an NA, take the initial one
+
+dat %>% select(job, job2, edu, edu2, uni, isced, isced_in) 
+
+
+dat$isced <-
+ifelse(is.na(dat$isced_cf), dat$isced_in, dat$isced_cf)
+
+
+#================================================#
+# Setting up a summary descriptive table ####
+#================================================#
+
+# relevant variable list
+
+dat$ei_ind
+dat$ei_scores
+
+dat$ident_sal
+dat$ident_pro
+dat$ident_com
+
+dat$nep_ind
+dat$nep_scores
+
+dat$nep_bal
+dat$nep_dom
+dat$nep_gro
+
+dat$meat_con
+
+dat$meat_know
+dat$meat_norm
+
+dat$lm_reg
+dat$lm_bio
+dat$strom_öko
+dat$ekw
+
+
+dat$isced
+dat$age
+dat$sex
+dat$income_p
+dat$income_hh
+
+
 
 
 #================================================#
@@ -987,6 +1307,12 @@ table(dat$a11d054a)
 dat %>% group_by(ceas097a) %>% summarise_at(.vars = q17ident,
                                             .funs = mean, na.rm = TRUE)
 
+
+
+#================================================#
+# Visual exploration ####
+#================================================#
+
 #================================================#
 # INFERENCIAL STATISTICS ####
 #================================================#
@@ -996,18 +1322,20 @@ dat %>% group_by(ceas097a) %>% summarize(mean(new2, na.rm = TRUE))
 
 
 library(ggplot2)
-ggplot(dat, mapping = aes(ei, ceas097a)) + 
+library(ggstatsplot)
+
+ggplot(dat, mapping = aes(ei_ind, meat_con)) + 
   geom_point(shape = 1) +
   geom_smooth(method = "lm", fill = "blue", alpha = 0.1) + 
-  geom_hline(yintercept = mean(dat$ceas097a), linetype="dotted") + #mean of sales
-  geom_vline(xintercept = mean(dat$ei), linetype="dotted") + #mean of advertising
+  geom_hline(yintercept = mean(dat$meat_con), linetype="dotted") + #mean of sales
+  geom_vline(xintercept = mean(dat$ei_ind), linetype="dotted") + #mean of advertising
   labs(x = "Advertising expenditures (EUR)", y = "Number of sales") + 
   theme_bw()
 
 scatterplot <- ggscatterstats(
   data = dat,
-  x = new2,
-  y = ceas097a,
+  x = ei_ind,
+  y = meat_con,
   xlab = "Advertising expenditure (EUR)", # label for x axis
   ylab = "Sales", # label for y axis
   line.color = "black", # changing regression line color line
@@ -1021,7 +1349,7 @@ scatterplot <- ggscatterstats(
   messages = FALSE # turn off messages and notes
 )
 
-library(ggstatsplot)
+
 ggbetweenstats(
   data = dat,
   x = ceas097a,
