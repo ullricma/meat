@@ -52,18 +52,17 @@ c(
 
 demo <- demo[,c(id, vars)]
 
-q15demo <- 
-  c(
-    "cfzh071a", #Geschlecht
-    "cfzh072c", #Geburtsjahr
-    "cfzh078a", #Höchster Schulabschluss, inkl. o. A
-    "cfzh079a", #Berufsabschluss
-    "cfzh080a", #Anderen Abschluss
-    "cfzh081a", #Universitätsabschluss
-    "cfzh084a", #Aktuell in beruflicher Ausbildung
-    "cfzh077a", #gemeinsamer Haushalt
-    "cfzh090c", #Haushaltseinkommen, 14 Kategorien standard edition
-    "cfzh089b") #Persönliches Einkommen, 15 Kategorien standard edition
+q15demo <- c(
+"cfzh071a", #Geschlecht
+"cfzh072c", #Geburtsjahr
+"cfzh078a", #Höchster Schulabschluss, inkl. o. A
+"cfzh079a", #Berufsabschluss
+#"cfzh080a", #Anderen Abschluss
+"cfzh081a", #Universitätsabschluss
+"cfzh084a", #Aktuell in beruflicher Ausbildung
+"cfzh077a", #gemeinsamer Haushalt
+"cfzh090c", #Haushaltseinkommen, 14 Kategorien standard edition
+"cfzh089b") #Persönliches Einkommen, 15 Kategorien standard edition
 
 
 
@@ -113,13 +112,6 @@ q15c <- c(
 # Fleisch
 q15aa <- c(
 "ceas097a", # Häufigkeit Fleischkonsum 
-"ceas098a", # Einschätzung Fleischkonsum: An jedem Tag mehrmals 
-"ceas099a", # Einschätzung Fleischkonsum: An jedem Tag einmal 
-"ceas100a", # Einschätzung Fleischkonsum: An 5-6 Tagen pro Woche 
-"ceas101a", # Einschätzung Fleischkonsum: An 3-4 Tagen pro Woche 
-"ceas102a", # Einschätzung Fleischkonsum: An 1-2 Tagen pro Woche 
-"ceas103a", # Einschätzung Fleischkonsum: Seltener 
-"ceas104a", # Einschätzung Fleischkonsum: Personen, die nie Fleisch essen 
 "ceas105a", # Angemessenheit Fleischkonsum 
 "ceas106a" # Fleischkonsum zukünftig 
 )
@@ -133,6 +125,16 @@ q15bb <- c(
 "ceas112a", # Einschätzung Treibhausgase: Reis, Kartoffeln und Hülsenfrüchte 
 "ceas113a", # Einschätzung Treibhausgase: Getreide und Getreideerzeugnisse
 "ceas114a" #Diskussionen Treibhausgase und Klimaschutz
+)
+
+q15z <- c(
+"ceas098a", # Einschätzung Fleischkonsum: An jedem Tag mehrmals 
+"ceas099a", # Einschätzung Fleischkonsum: An jedem Tag einmal 
+"ceas100a", # Einschätzung Fleischkonsum: An 5-6 Tagen pro Woche 
+"ceas101a", # Einschätzung Fleischkonsum: An 3-4 Tagen pro Woche 
+"ceas102a", # Einschätzung Fleischkonsum: An 1-2 Tagen pro Woche 
+"ceas103a", # Einschätzung Fleischkonsum: Seltener 
+"ceas104a" # Einschätzung Fleischkonsum: Personen, die nie Fleisch essen 
 )
 
 #CC 08/2015
@@ -155,7 +157,7 @@ q15d <- c(
 "cczd016a") # NEP-Skala: Umweltkatastrophe
 
 #Nutzung und andere Meinungen
-q15d <- c(
+q15e <- c(
 "cczd030a", # Meinung Atomausstieg 
 "cczd031a", # Klimaschutzpolitik - Tempo 
 "cczd032a", # Ernsthaftigkeit Problem Klimawandel 
@@ -171,13 +173,13 @@ q15d <- c(
 )
 
 #Partei
-q15e <- c("cczc043a") # Sonntagsfrage Wahlentscheidung standard edition
+q15f <- c("cczc043a") # Sonntagsfrage Wahlentscheidung standard edition
 
 ### Now let´s combine this into our dataframe with all questions from 2015
 
 # first we combine all variables in one vector
 
-q15_vars <- c(q15demo, q15a,q15aa,q15b,q15bb,q15c,q15d,q15e)
+q15_vars <- c(q15demo, q15a,q15aa,q15b,q15bb,q15c,q15d,q15e,q15f,q15z)
 
 q15 <- q15[,c(id,q15_vars)]
 
@@ -365,6 +367,27 @@ apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correl
 apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
 # Conduct Bartlett's test (p should be < 0.05)
 
+# I see that item eabk085 has very low correlations with all the other variables, so I decide to delete them
+# for the further analysis and repeat the steps aboce
+q17ident <- q17ident[!(q17ident %in% c("eabk085a","eabk084a"))]
+
+raq_matrix <- cor(dat[,q17ident], use="complete.obs") #create matrix
+round(raq_matrix,3)
+
+# Low correlations by variable
+
+correlations <- as.data.frame(raq_matrix)
+# Correlation plot
+
+library(psych)
+corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations between variables")
+# Check number of low correlations adn mean correlaiton per variable
+
+diag(correlations) <- NA #set diagonal elements to missing
+apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correlations for each variable
+apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
+# Conduct Bartlett's test (p should be < 0.05)
+
 cortest.bartlett(raq_matrix, n = nrow(dat))
 # Count number of high correlations for each variable
 
@@ -377,11 +400,15 @@ det(raq_matrix) > 0.00001
 # Compute MSA statstic (should be > 0.5)
 KMO(dat[,q17ident])
 
+# we delete the fifth item due to very low correlation with all the other variables
+
+
 ### STEP 2
 
 # Deriving factors
+
 # Find the number of factors to extract
-pc1 <- principal(dat[,q17ident], nfactors = 11, rotate = "none")
+pc1 <- principal(dat[,q17ident], nfactors = length(q17ident), rotate = "none")
 pc1
 
 plot(pc1$values, type="b")
@@ -392,7 +419,6 @@ pc2 <- principal(dat[,q17ident], nfactors = 2, rotate = "none")
 pc2
 
 ### Inspect residuals
-
 # Create residuals matrix
 residuals <- factor.residuals(raq_matrix, pc2$loadings)
 round(residuals,3)
@@ -421,61 +447,47 @@ shapiro.test(residuals)
 
 ### STEP 3
 
-# Oblique factor rotation (oblimin)
+# Oblique factor rotation (oblimin), because there is high correlation assumed
 pc3 <- principal(dat[,q17ident], nfactors = 2, rotate = "oblimin", scores = TRUE)
-print.psych(pc4, cut = 0.3, sort = TRUE) 
-
-# Int: Factors do not correlate -> use varimax as orthogonal analysis
-# see: http://hosted.jalt.org/test/PDF/Brown31.pdf
-
-# Orthogonal factor rotation (varimax)
-pc4 <- principal(dat[,q17ident], nfactors = 2, rotate = "varimax")
-pc4
 print.psych(pc3, cut = 0.3, sort = TRUE)
 
+# see: http://hosted.jalt.org/test/PDF/Brown31.pdf
 # Interpretation of Factor Analysis tutorial: https://data.library.virginia.edu/getting-started-with-factor-analysis/
 
-# 4 Factors have high cross-loading with our factor, which variables are these?
-
-q17ident[c(11,7,5,8)]
-
-# 5 und 8 laden gar nicht auf unserem Faktor
-#"eabk085a" # Selbsteinschätzung: Der Umwelt überlegen #
-#"eabk088a" # Selbsteinschätzung: Unabhängig von Umwelt #
-
-# Ist irgendwie eine krasse Itemformulierung, weil das Wort Respektlos stark wertend ist? Vlt. soziale Erwünschtheit
-#"eabk087a" # Selbsteinschätzung: Respektlos gegenüber Umwelt #
 
 
-# WEhmütig und Emotionslos ist bisschen weirde Formulierungen
-#"eabk091a" # Selbsteinschätzung: Wehmütig bezüglich Umwelt #
+#--------------------------------------------------#
+# headline2                             
+#--------------------------------------------------#
+# I will create two Factors now, first the factor with the two separate levels, second the factor with one combined level
+q17ident_pca_1 <- q17ident[c(3:9)]
+q17ident_pca_2 <- q17ident[c(1:2)]
+
+dat <- cbind(dat, pc3$scores)
+
+dat <- dat %>% rename("ei_fac1" = "TC1",
+                      "ei_fac2" = "TC2")
 
 
 
-#calculate the pca only with relevant variables
-# excluding 5,7,8 and 11 from the factor due to high loadings on another factor
 
-# QUESTION: Is it wisely to erase the variables with too high cross loadings?
-q17ident_pca <- q17ident[c(1,2,3,4,6,9,10)]
-
-pc4 <- principal(dat[,q17ident_pca], nfactors = 1, rotate = "varimax", scores = TRUE)
+# here I take the factors into one single variable
+pc4 <- principal(dat[,q17ident], nfactors = 1, rotate = "none", scores = TRUE)
 print.psych(pc4, cut = 0.3, sort = TRUE)
 
 # Add factor scores to dataframe 
 dat <- cbind(dat, pc4$scores)
 
-# for now just let´s name the PC1 as ei for (environmental identity)
-dat <- dat %>% rename("ei_scores" = "PC1")
-
+dat <- dat %>% rename("ei_single" = "PC1")
 
 ### Creating an index as second approach next to using scores
 
 # Calculate the sum of value of the identity (without the weighting of the scores)
-dat$ei_sum <- dat %>% select(all_of(q17ident_pca)) %>% 
+dat$ei_sum <- dat %>% select(all_of(q17ident)) %>% 
   mutate(ei_sum = rowSums(., na.rm = TRUE)) %>% pull(ei_sum)
   
 # calculate the NAs for all the variables
-dat$ei_nas <- apply(dat[,q17ident_pca], MARGIN = 1, function(x) sum(is.na(x)))
+dat$ei_nas <- apply(dat[,q17ident], MARGIN = 1, function(x) sum(is.na(x)))
 
 
 dat[,c("ei_sum","ei_nas")]
@@ -483,9 +495,9 @@ table(dat$ei_nas)
 
 
 # if there are more than 50% Nas don´t calculate the mean, otherwise take the average
-dat <- dat %>% mutate(ei_ind = ifelse(ei_nas > round(length(q17ident_pca)/2), NA, 
-                                  ifelse(ei_nas == 0, ei_sum/length(q17ident_pca),
-                                  ifelse(ei_nas !=0, ei_sum/(length(q17ident_pca)-ei_nas),NA))))
+dat <- dat %>% mutate(ei_ind = ifelse(ei_nas > round(length(q17ident)/2), NA, 
+                                  ifelse(ei_nas == 0, ei_sum/length(q17ident),
+                                  ifelse(ei_nas !=0, ei_sum/(length(q17ident)-ei_nas),NA))))
 
 
 # Additive Indexing, problem: Missings can not be handled
@@ -507,16 +519,64 @@ max(dat$ei_sum)
 
 # make a plausibility check
 
-dat %>% select(all_of(q17ident_pca), ei_sum, ei_nas, ei_ind)
+dat %>% select(all_of(q17ident), ei_sum, ei_nas, ei_ind)
 
 
 #--------------------------------------------------#
 # Reliability Analysis                            
 #--------------------------------------------------#
+identity1 <- dat[,q17ident_pca_1]
+identity2 <- dat[,q17ident_pca_2]
+psych::alpha(identity1)
+psych::alpha(identity2)
 
-identity <- dat[,q17ident_pca]
-psych::alpha(identity)
 
+identity_single <- dat[,q17ident]
+psych::alpha(identity_single)
+
+
+dat %>% group_by(meat_con) %>% summarise_at(.vars = q17ident,
+                                            .funs = mean, na.rm = TRUE)
+
+
+
+
+# #--------------------------------------------------#
+# # Another Factor Analysis approach                             
+# #--------------------------------------------------#
+# q17ident_pca <- q17ident[c(1,2,3,4,6,7,10,11)]
+# 
+# pc5 <- principal(dat[,q17ident_pca], nfactors = 1, rotate = "varimax", scores = TRUE)
+# print.psych(pc5, cut = 0.3, sort = TRUE)
+# 
+# # Add factor scores to dataframe 
+# dat <- cbind(dat, pc5$scores)
+# 
+# # for now just let´s name the PC1 as ei for (environmental identity)
+# dat <- dat %>% rename("ei_scores_3" = "PC1")
+# 
+# dat %>% group_by(meat_con) %>% summarise_at(.vars = c("ei_scores_3", "ei_scores_2", "ei_scores"),
+#                                             .funs = mean, na.rm = TRUE)
+# 
+# 
+# ### Creating an index as second approach next to using scores
+# 
+# # Calculate the sum of value of the identity (without the weighting of the scores)
+# dat$ei_sum <- dat %>% select(all_of(q17ident_pca)) %>% 
+#   mutate(ei_sum = rowSums(., na.rm = TRUE)) %>% pull(ei_sum)
+# 
+# # calculate the NAs for all the variables
+# dat$ei_nas <- apply(dat[,q17ident_pca], MARGIN = 1, function(x) sum(is.na(x)))
+# 
+# 
+# dat[,c("ei_sum","ei_nas")]
+# table(dat$ei_nas)
+# 
+# 
+# # if there are more than 50% Nas don´t calculate the mean, otherwise take the average
+# dat <- dat %>% mutate(ei_ind_2 = ifelse(ei_nas > round(length(q17ident_pca)/2), NA, 
+#                                       ifelse(ei_nas == 0, ei_sum/length(q17ident_pca),
+#                                              ifelse(ei_nas !=0, ei_sum/(length(q17ident_pca)-ei_nas),NA))))
 
 
 #================================================#
@@ -625,7 +685,7 @@ prop.table(table(dat$meat_con))
 
 
 #--------------------------------------------------#
-# CV: NEP Scale (Ecological Worldview) ####                          
+# CV: NEP Scale (Ecological Worldview) 2016 ####                          
 #--------------------------------------------------#
 q16a <- c(
 #  "dczd001a", # Großstadtnähe Wohngegend 
@@ -660,7 +720,7 @@ ifelse(i == 4, 2,
 ifelse(i == 5, 1, NA))))))
 
 #--------------------------------------------------#
-# PCA (Environmental Identity)                             
+# PCA (NEP)                             
 #--------------------------------------------------#
 
 # STEP 1
@@ -741,7 +801,7 @@ qqline(residuals)
 shapiro.test(residuals)
 
 # STEP 3
-# Orthogonal factor rotation 
+# oblique factor rotation 
 pc3 <- principal(dat[,q16a], nfactors = 3, rotate = "oblimin")
 pc3
 print.psych(pc3, cut = 0.3)
@@ -750,7 +810,7 @@ print.psych(pc3, cut = 0.3)
 # Orthogonal factor rotation without the 07 item, which loads to high on other factors
 pc3 <- principal(dat[,q16a[-6]], nfactors = 3, rotate = "varimax")
 pc3
-print.psych(pc3, cut = 0.3)
+print.psych(pc3)
 
 #--------------------------------------------------#
 # Reliability Analysis                            
@@ -843,47 +903,371 @@ dat <- dat %>% mutate(nep_ind = ifelse(nep_nas > round(length(q16a_ind)/2)  , NA
 dat %>% select(q16a_ind,"nep_sum","nep_nas","nep_ind")
 
 
+
+#--------------------------------------------------#
+# CV: NEP Scale (Ecological Worldview) 2015 ####                          
+#--------------------------------------------------#
+
+q15d <- c(
+  #"cczd001a", # Großstadtnähe Wohngegend
+  "cczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen 
+  "cczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen 
+  "cczd004a", # NEP-Skala: Folgen von menschlichem Eingriff 
+  "cczd005a", # NEP-Skala: Menschlicher Einfallsreichtum 
+  "cczd006a", # NEP-Skala: Missbrauch der Umwelt durch Menschen 
+  "cczd007a", # NEP-Skala: Genügend natürliche Rohstoffe 
+  "cczd008a", # NEP-Skala: Pflanzen und Tiere gleiches Recht 
+  "cczd009a", # NEP-Skala: Gleichgewicht der Natur stabil genug 
+  "cczd010a", # NEP-Skala: Menschen Naturgesetzen unterworfen 
+  "cczd011a", # NEP-Skala: Umweltkrise stark übertrieben. 
+  "cczd012a", # NEP-Skala: Erde ist wie Raumschiff 
+  "cczd013a", # NEP-Skala: Menschen zur Herrschaft über Natur bestimmt 
+  "cczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich 
+  "cczd015a", # NEP-Skala: Natur kontrollieren 
+  "cczd016a") # NEP-Skala: Umweltkatastrophe
+
+#A: human domination of nature (RC2)
+#B: balance of nature (RC1)
+#C: limits to growth (RC3)
+# Recoding the variable so that high score means "high ecological worldview"
+q15d_nep_rec <- q15d[c(1,3,5,7,9,11,13,15)]
+
+dat[,q15d_nep_rec] <- lapply(dat[, q15d_nep_rec], function(i) 
+ifelse(i == 1, 5, 
+ifelse(i == 2, 4,
+ifelse(i == 3, 3,
+ifelse(i == 4, 2,
+ifelse(i == 5, 1, NA))))))
+
+#--------------------------------------------------#
+# PCA (Environmental Identity)                             
+#--------------------------------------------------#
+
+# STEP 1
+
+# Inspect correlation matrix
+
+raq_matrix <- cor(dat[,q15d], use="complete.obs") #create matrix
+round(raq_matrix,3)
+
+# Low correlations by variable
+
+correlations <- as.data.frame(raq_matrix)
+# Correlation plot
+
+library(psych)
+corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations between variables")
+# Check number of low correlations adn mean correlaiton per variable
+
+diag(correlations) <- NA #set diagonal elements to missing
+apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correlations for each variable
+apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
+
+
+# let´s kick variables that don´t correlate with any others (< 0.3) and repeat the step above
+q15d <- q15d[!(q15d %in% c("cczd007a","cczd002a","cczd010a"))]
+
+# STEP 1
+
+# Inspect correlation matrix
+
+raq_matrix <- cor(dat[,q15d], use="complete.obs") #create matrix
+round(raq_matrix,3)
+
+# Low correlations by variable
+
+correlations <- as.data.frame(raq_matrix)
+# Correlation plot
+
+library(psych)
+corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations between variables")
+# Check number of low correlations adn mean correlaiton per variable
+
+diag(correlations) <- NA #set diagonal elements to missing
+apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correlations for each variable
+apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
+
+# Conduct Bartlett's test (p should be < 0.05)
+
+cortest.bartlett(raq_matrix, n = nrow(dat))
+# Count number of high correlations for each variable
+
+apply(abs(correlations) > 0.8, 1, sum, na.rm = TRUE)
+# Compute determinant (should be > 0.00001)
+
+det(raq_matrix)
+det(raq_matrix) > 0.00001
+
+# Compute MSA statstic (should be > 0.5)
+
+KMO(dat[,q15d])
+
+# STEP 2
+
+# Deriving factors
+
+
+
+# Find the number of factors to extract
+pc1b <- principal(dat[,q15d], nfactors = length(q15d), rotate = "none")
+pc1b
+
+plot(pc1b$values, type="b")
+abline(h=1, lty=2)
+
+# Run model with appropriate number of factors
+
+pc2b <- principal(dat[,q15d], nfactors = 2, rotate = "none")
+pc2b
+# Inspect residuals
+
+# Create residuals matrix
+residuals <- factor.residuals(raq_matrix, pc2b$loadings)
+round(residuals,3)
+
+# Create reproduced matrix
+reproduced_matrix <- factor.model(pc2b$loadings)
+round(reproduced_matrix,3)
+# Compute model fit manually (optional - also included in output)
+
+ssr <- (sum(residuals[upper.tri((residuals))]^2)) #sum of squared residuals 
+ssc <- (sum(raq_matrix[upper.tri((raq_matrix))]^2)) #sum of squared correlations
+ssr/ssc #ratio of ssr and ssc
+1-(ssr/ssc) #model fit
+
+# Share of residuals > 0.05 (should be < 50%)
+residuals <- as.matrix(residuals[upper.tri((residuals))])
+large_res <- abs(residuals) > 0.05
+sum(large_res)
+sum(large_res)/nrow(residuals)
+
+# Test if residuals are approximately normally distributed
+
+hist(residuals)
+qqnorm(residuals) 
+qqline(residuals)
+shapiro.test(residuals)
+
+# STEP 3
+# Orthogonal factor rotation without the 07 item, which loads to high on other factors
+pc3c <- principal(dat[,q15d], nfactors = 2, rotate = "varimax")
+pc3c
+
+print.psych(pc3c, cut = 0.3)
+
+# Orthogonal factor rotation 
+pc3b <- principal(dat[,q15d], nfactors = 2, rotate = "oblimin")
+pc3b
+print.psych(pc3b, cut = 0.3)
+
+#--------------------------------------------------#
+# Reliability Analysis                            
+#--------------------------------------------------#
+
+### Three Dimensional NEP Scale as suggested by PCA
+
+# Specify subscales according to results of PCA
+#A: human domination of nature (RC2)
+#B: balance of nature (RC1)
+#C: limits to growth (RC3)
+
+#"cczd001a", # Großstadtnähe Wohngegend
+#"cczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen # deleted
+#"cczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen # TC1
+#"cczd004a", # NEP-Skala: Folgen von menschlichem Eingriff #TC2
+#"cczd005a", # NEP-Skala: Menschlicher Einfallsreichtum # TC1
+#"cczd006a", # NEP-Skala: Missbrauch der Umwelt durch Menschen #TC2 
+#"cczd007a", # NEP-Skala: Genügend natürliche Rohstoffe deleted
+#"cczd008a", # NEP-Skala: Pflanzen und Tiere gleiches Recht #TC2 
+#"cczd009a", # NEP-Skala: Gleichgewicht der Natur stabil genug # TC1 
+#"cczd010a", # NEP-Skala: Menschen Naturgesetzen unterworfen deleted
+#"cczd011a", # NEP-Skala: Umweltkrise stark übertrieben. # TC1
+#"cczd012a", # NEP-Skala: Erde ist wie Raumschiff #TC2
+#"cczd013a", # NEP-Skala: Menschen zur Herrschaft über Natur bestimmt # TC1
+#"cczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich #TC2
+#"cczd015a", # NEP-Skala: Natur kontrollieren # TC1
+#"cczd016a") # NEP-Skala: Umweltkatastrophe #TC2
+
+#TC 1: Mensch Herrschaft über Natur
+#TC 2: balance of nature
+
+
+
+#--------------------------------------------------#
+# Constructing different NEP Variables                            
+#--------------------------------------------------#
+
+### Three Dimensional
+
+#get the scores from the PCA in our original data frame
+dat <- cbind(dat, pc3b$scores)
+
+# give factors meaningful names
+
+dat <- dat %>% rename("nep_bal15" = "TC1",
+                      "nep_dom15" = "TC2")
+
+
+
+#--------------------------------------------------#
+# Reliability Analysis                             
+#--------------------------------------------------#
+
+
+# Test reliability of subscales
+nep_dom15 <- dat[,q15d[c(1,3,6,7,9,11)]]
+nep_bal15 <- dat[,q15d[c(2,4,5,8,10,12)]]
+
+# Test reliability of subscales
+psych::alpha(nep_dom15)
+psych::alpha(nep_bal15)
+
+
+
+#--------------------------------------------------#
+# creating a single NEP Scale                             
+#--------------------------------------------------#
+
+q15d_ind <- q15d
+
+# Interesting comment on what to take https://www.theanalysisfactor.com/index-score-factor-analysis/
+
+# Factor Scores
+# Orthogonal factor rotation without the 07 item, which loads to high on other factors
+pc4b <- principal(dat[,q15d], nfactors = 1, rotate = "none")
+pc4b
+print.psych(pc4b, cut = 0.3)
+
+# now bind this only One Dimensional NEP factor to our original data frame
+dat <- cbind(dat, pc4b$scores)
+
+dat <- dat %>% rename("nep_single15" = "PC1")
+
+
+# Factor-Based Scores (Summed up and standardized to 1-10)
+# excluding item 6 to keep things consistent (Might need to reverse this, depending on how I proceed)
+
+
+# creating a sum over all the selected items
+dat$nep_sum <- dat %>% select(q15d_ind) %>%
+  mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
+
+# counting the NAs
+dat$nep_nas <- apply(dat[,q15d_ind], MARGIN = 1, function(x) sum(is.na(x)))
+
+# quick check
+dat[,c(q15d_ind, "nep_sum", "nep_nas")]
+
+# if there are more than 50% Nas don´t calculate the mean, otherwise take the average
+dat <- dat %>% mutate(nep_ind15 = ifelse(nep_nas > round(length(q15d_ind)/2)  , NA, 
+                                       ifelse(nep_nas == 0, nep_sum/length(q15d_ind),
+                                              ifelse(nep_nas !=0, nep_sum/(length(q15d_ind)-nep_nas),NA))))
+
+
+dat %>% select(q15d_ind,"nep_sum","nep_nas","nep_ind15")
+
+dat %>% select(nep_ind15, nep_ind, nep_scores, nep_single15)
+
+
+
 #================================================#
 # ADDITIONAL VARIABLE CONSTRUCTION ####
 #================================================#
+
+
+#--------------------------------------------------#
+# Schätzung Fleischkonsum allgemeine Bevölkerung                               
+#--------------------------------------------------#
+
+dat <- dat %>% rename("m7" = "ceas098a", 
+                      "m6" = "ceas099a", 
+                      "m5" = "ceas100a", 
+                      "m4" = "ceas101a", 
+                      "m3" = "ceas102a", 
+                      "m2" = "ceas103a", 
+                      "m1" = "ceas104a")
+
+# create a vector for the variables to handle them easier
+vars = 
+c("m7",
+"m6",
+"m5",
+"m4",
+"m3",
+"m2",
+"m1")
+
+# reverse order of vector
+vars <- rev(vars)
+dat[,vars] <- lapply(dat[,vars], function(x) as.integer(x))
+
+
+
+
+dat <- dat %>% mutate(meat_pop = ifelse(meat_con == 1, rowSums(.[vars[2:7]], na.rm = TRUE), 
+                                 ifelse(meat_con == 2, rowSums(.[vars[3:7]], na.rm = TRUE),
+                                 ifelse(meat_con == 3, rowSums(.[vars[4:7]], na.rm = TRUE),
+                                 ifelse(meat_con == 4, rowSums(.[vars[5:7]], na.rm = TRUE),
+                                 ifelse(meat_con == 5, rowSums(.[vars[6:7]], na.rm = TRUE),
+                                 ifelse(meat_con == 6, rowSums(.[vars[7:7]], na.rm = TRUE),
+                                 ifelse(meat_con == 7, 0, NA))))))))
+
+dat$meat_pop_nas <- apply(dat[,vars], MARGIN = 1, function(x) sum(is.na(x)))
+
+dat <- dat %>% mutate(meat_pop = ifelse(meat_pop_nas %in% c(6:7), NA, meat_pop))
+
+# mehr als 50% der Gesellschaft isst mehr Fleisch als ich
+dat <- dat %>% mutate(meat_pop_more = ifelse(meat_pop > 50, 1,0))
+
 #--------------------------------------------------#
 # Angemessenheit (Injunctive norm of eating meat)
 #--------------------------------------------------#
 dat <- dat %>% rename("meat_norm" = "ceas105a")
 
+# First I recode the meat_norm variable so the coding scheme is the same as for meat consumption
+dat[,"meat_norm"] <-  
+ifelse(dat$meat_norm == 1, 7,
+ifelse(dat$meat_norm == 2, 6,
+ifelse(dat$meat_norm == 3, 5,
+ifelse(dat$meat_norm == 4, 4,
+ifelse(dat$meat_norm == 5, 3,
+ifelse(dat$meat_norm == 6, 2,
+ifelse(dat$meat_norm == 7, 1,NA)))))))
 
-table(dat$meat_norm)
+# + means that people eat more meat than what they think is appropiate, 
+# - means that people eat less meat than what they think is appropiate
+dat <- dat %>% mutate(meat_norm_diff = meat_con - meat_norm)
+
+
+dat %>% select(meat_con, meat_norm, meat_norm_diff)
+
+table(dat$meat_norm, useNA = "ifany")
 
 # Recoding the variable
-#4:  1-2: taeglich
-#3:  3-4: 3-6 Tage/Woche
-#2:  5: 1-2 Tage/ Woche
-#1:  6-7: seltener/ gar nicht
+#4:  taeglich
+#3:  3-6 Tage/Woche
+#2:  1-2 Tage/ Woche
+#1:  seltener/ gar nicht
 
-dat[,"meat_norm"] <-  
-ifelse(dat$meat_norm %in% c(1:2), 4, 
-ifelse(dat$meat_norm %in% c(3:4), 3,
-ifelse(dat$meat_norm == 5, 2,
-ifelse(dat$meat_norm %in% c(6:7), 1, NA))))
-
-### 
-
-table(dat$meat_norm, dat$meat_con)
+#dat[,"meat_norm"] <-  
+#ifelse(dat$meat_norm %in% c(1:2), 1, 
+#ifelse(dat$meat_norm %in% c(3:4), 2,
+#ifelse(dat$meat_norm == 5, 3,
+#ifelse(dat$meat_norm %in% c(6:7), 4, NA))))
 
 #--------------------------------------------------#
 # Einschätzung Treibhausgase                            
 #--------------------------------------------------#
 
-# q15bb <- c(
-#   "ceas107a", # Einschätzung Treibhausgase: Gemüse und Obst 
-#   "ceas108a", # Einschätzung Treibhausgase: Fleisch und Fleischerzeugnisse 
-#   "ceas109a", # Einschätzung Treibhausgase: Milch und Milcherzeugnisse 
-#   "ceas110a", # Einschätzung Treibhausgase: Öl und Eier 
-#   "ceas111a", # Einschätzung Treibhausgase: Zucker, Honig und Kakao 
-#   "ceas112a", # Einschätzung Treibhausgase: Reis, Kartoffeln und Hülsenfrüchte 
-#   "ceas113a", # Einschätzung Treibhausgase: Getreide und Getreideerzeugnisse
-#   "ceas114a" #Diskussionen Treibhausgase und Klimaschutz
-# )
+q15bb <- c(
+  "ceas107a", # Einschätzung Treibhausgase: Gemüse und Obst
+  "ceas108a", # Einschätzung Treibhausgase: Fleisch und Fleischerzeugnisse
+  "ceas109a", # Einschätzung Treibhausgase: Milch und Milcherzeugnisse
+  "ceas110a", # Einschätzung Treibhausgase: Öl und Eier
+  "ceas111a", # Einschätzung Treibhausgase: Zucker, Honig und Kakao
+  "ceas112a", # Einschätzung Treibhausgase: Reis, Kartoffeln und Hülsenfrüchte
+  "ceas113a" # Einschätzung Treibhausgase: Getreide und Getreideerzeugnisse
+)
 
 # transform to integers
 dat[,q15bb] <- lapply(dat[,q15bb], function(x) as.integer(x))
@@ -901,7 +1285,7 @@ dat <- dat %>% mutate(meat_know = ifelse(ceas108a == 1, 1,
 #dat <- dat %>% mutate(meat_know3 = ifelse(ceas108a %in% c(1,2), 1,0))
 #dat <- dat %>% mutate(meat_know2 = ifelse(ceas108a %in% c(1), 1,0))
 
-table(dat$meat_know)
+table(dat$meat_know, useNA = "ifany")
 
 # quick check whether it worked as intended
 #dat %>% select(ceas108a, ceas109a, meat_know3) %>% filter(ceas109a == 1, meat_know3 == 1)
@@ -945,7 +1329,7 @@ ifelse(i == 1, 0,
 ifelse(i %in% c(2,3), 1,
 ifelse(i == 98, NA, NA))))
 
-table(dat$lm_bio)
+table(dat$lm_bio, useNA = )
 
 #--------------------------------------------------#
 # Öko Strom                             
@@ -963,8 +1347,6 @@ table(dat$strom_öko)
 # 3 Vielleicht zukünftig
 # 4 Nein
 # 98 Weiß nicht
-
-table(dat$strom_öko)
 
 #--------------------------------------------------#
 # #Schwierigkeit eigenen Fleischkonsum zu reduzieren                            
@@ -1015,6 +1397,10 @@ ifelse(is.na(cfzh071a), a11d054a,
 ifelse(cfzh071a != a11d054a, cfzh071a, cfzh071a)))
 
 dat %>% select(cfzh071a, a11d054a, sex) %>% filter(is.na(cfzh071a))
+
+# recode so male == 0, female == 1
+dat$sex <- ifelse(dat$sex == 2,1,
+           ifelse(dat$sex == 1,0,NA))
 
 #--------------------------------------------------#
 # create a new variable for age                             
@@ -1240,12 +1626,11 @@ dat %>% select(job2, edu2, isced_in) %>% filter(is.na(isced_in))
 
 # comarison of ISCED, now let´s take a isced value from the most recent demographic data,
 # if there is an NA, take the initial one
-
-dat %>% select(job, job2, edu, edu2, uni, isced, isced_in) 
-
-
 dat$isced <-
 ifelse(is.na(dat$isced_cf), dat$isced_in, dat$isced_cf)
+
+# check
+dat %>% select(job, job2, edu, edu2, uni, isced, isced_in) 
 
 
 #================================================#
@@ -1254,68 +1639,236 @@ ifelse(is.na(dat$isced_cf), dat$isced_in, dat$isced_cf)
 
 # relevant variable list
 
-dat$ei_ind
-dat$ei_scores
+vars <- c("ei_single","ei_fac1","ei_fac2","ident_sal","ident_pro","ident_com",
+          "nep_bal15","nep_dom15","nep_single15",  "meat_con","meat_know","meat_pop", 
+          "meat_pop_more", "meat_norm", "meat_norm_diff","lm_reg", 
+          "lm_bio","strom_öko","ekw","envorga","age","sex","income_p", "income_hh", "isced", "edu", "job")
 
-dat$ident_sal
-dat$ident_pro
-dat$ident_com
-
-dat$nep_ind
-dat$nep_scores
-
-dat$nep_bal
-dat$nep_dom
-dat$nep_gro
-
-dat$meat_con
-
-dat$meat_know
-dat$meat_norm
-
-dat$lm_reg
-dat$lm_bio
-dat$strom_öko
-dat$ekw
+vars <- c("ei_single","ident_sal","ident_pro","ident_com",
+          "nep_single15", "meat_con","meat_know",
+          "meat_pop_more", "meat_norm", "meat_norm_diff","lm_reg", 
+          "lm_bio","strom_öko","age","sex","income_p","income_hh", "isced")
 
 
-dat$isced
-dat$age
-dat$sex
-dat$income_p
-dat$income_hh
+library(knitr)
+library(kableExtra)
+
+#dt <- mtcars[1:5, 1:6]
+#kable(dt, "latex", booktabs = T) 
+#df <- dat[1:10,vars]
+#%>% as_image(file = "C:/Users/Ulli/Desktop/Thesis/thesis_small/graphics/descriptives/table1.png")
+#%>%  save_kable("x", self_contained = TRUE, keep_tex = TRUE, latex_header_includes = c("\\usepackage[ngerman]{babel}"))
 
 
+
+# create a data frame that has the information
+tmp <- do.call(data.frame, 
+               list(mean = apply(dat[,vars], 2, mean, na.rm= TRUE),
+                    sd = apply(dat[,vars], 2, sd, na.rm= TRUE),
+                    median = apply(dat[,vars], 2, median, na.rm= TRUE),
+                    min = apply(dat[,vars], 2, min, na.rm= TRUE),
+                    max = apply(dat[,vars], 2, max, na.rm= TRUE),
+                    n = apply(dat[,vars], 2, length),
+                    na = apply(dat[,vars], 2, function(x) sum(is.na(x)))) )
+
+# changing names of columns/ rows
+names(tmp)
+rownames(tmp) <- c("Environmental Identity (Index)",
+                   "Environmental Identity (Scores)", 
+                   "Environmental Identity (Salience)")
+
+
+# check whether we like the style
+# library(magick)
+# kable(tmp, "latex", booktabs = T, caption = "Überblick der Variablen") %>% as_image(file = "./test1.png")
+# plot(magick::image_read("./test1.png"))
 
 
 #================================================#
-# DESCRIPTIVE STATISTICS ####
-#================================================# 
-dat$ceas097a
+# Initial exploration ####
+#================================================#
 
-# meat consumption
-prop.table(table(dat$ceas097a))
 
-# age
-table(dat$age)
+  
 
-# gender
-table(dat$a11d054a)
+#--------------------------------------------------#
+# Crosstabs                             
+#--------------------------------------------------#
 
-# dat %>% group_by(a11d054a) %>% summarize(x = mean(ceas097a))
+library(janitor)
 
-dat %>% group_by(ceas097a) %>% summarise_at(.vars = q17ident,
+dat %>% tabyl(ceas108a, ei_single, show_missing_levels = FALSE) 
+
+
+dat %>% group_by(meat_con,ceas108a) %>% 
+  summarise(n = n()) %>% 
+  spread(ceas108a, n) %>%
+  adorn_totals(c("row", "col")) %>% 
+  adorn_percentages("row", na.rm = TRUE) %>%
+  adorn_pct_formatting()
+
+dat %>% group_by(meat_con) %>% 
+  filter(ceas108a == 1 & ident_pro > 3 & ei_single > 1.5) %>% 
+  summarise(n = n()) %>% 
+  adorn_percentages("col")
+
+
+# environmental identity X meat consumption
+
+dat %>% group_by(meat_con) %>% summarise(mean = mean(ei_single, na.rm = TRUE), n = n())
+
+
+# environmental identity x prominence of identity
+
+dat %>% 
+
+# environmental identity X meat consumption for cases with high prominence
+
+dat %>% group_by(meat_con) %>% filter(ident_pro > 3) %>%  summarise(mean = mean(ei_single, na.rm = TRUE), n = n())
+
+
+# Einschätzung Treibhausgasausstoß X Norm wie viel Fleisch wäre okay zu essen?
+dat %>% group_by(meat_norm) %>% summarise(meat) 
+
+#%>% kable("latex", booktabs = T)
+
+
+
+#--------------------------------------------------#
+# Correlation Matrix                             
+#--------------------------------------------------#
+
+dat[,vars]
+
+mcor <- round(cor(dat[,vars], use = "complete.obs"),2)
+
+upper<-mcor
+upper[upper.tri(mcor)]<-""
+upper<-as.data.frame(upper)
+upper
+
+
+kable(upper, "latex", booktabs = T, caption = "Überblick der Variablen") %>% as_image(file = "./test1.png")
+plot(magick::image_read("./test1.png"))
+
+
+
+corstarsl <- function(x){
+  x <- as.matrix(x)
+  R <- Hmisc::rcorr(x)$r
+  p <- Hmisc::rcorr(x)$P
+  
+  ## define notions for significance levels; spacing is important.
+  mystars <- ifelse(p < .001, "***", ifelse(p < .01, "** ", ifelse(p < .05, "* ", " ")))
+  
+  ## trunctuate the matrix that holds the correlations to two decimal
+  R <- format(round(cbind(rep(-1.11, ncol(x)), R), 2))[,-1]
+  
+  ## build a new matrix that includes the correlations with their apropriate stars
+  Rnew <- matrix(paste(R, mystars, sep=""), ncol=ncol(x))
+  diag(Rnew) <- paste(diag(R), " ", sep="")
+  rownames(Rnew) <- colnames(x)
+  colnames(Rnew) <- paste(colnames(x), "", sep="")
+  
+  ## remove upper triangle
+  Rnew <- as.matrix(Rnew)
+  Rnew[upper.tri(Rnew, diag = TRUE)] <- ""
+  Rnew <- as.data.frame(Rnew)
+  
+  ## remove last column and return the matrix (which is now a data frame)
+  Rnew <- cbind(Rnew[1:length(Rnew)-1])
+  return(Rnew)
+}
+
+corstarsl(dat[,vars])
+
+test <- xtable(corstarsl(dat[,vars]))
+
+
+
+table(dat$meat_know, dat$meat)
+
+
+round(prop.table(xtabs(~meat_con + meat_norm_diff, data = dat),1),2)
+
+prop.table(xtabs(~meat_con + meat_pop_more, data = dat),1)
+prop.table(xtabs(~meat_know + meat_norm, data = dat),1)
+
+
+dat %>% group_by(meat_con) %>% summarise(mean(meat_norm_diff, na.rm = TRUE))
+
+ftable(xtabs(~ meat_con + meat_pop_more, data = dat))
+ftable(xtabs(~ meat_con + mean(ei_ind) + meat_know, data = dat))
+table(dat$meat_con, dat$meat_pop_more)
+
+
+
+
+
+table(dat$meat_con)
+hist(dat$ei_ind)
+hist(dat$ei_scores)
+hist(dat$ei_sum)
+
+dat %>% group_by(meat_con) %>% summarise_at(.vars = c("ei_ind", "ei_scores", "ident_pro"),
                                             .funs = mean, na.rm = TRUE)
 
+dat %>% group_by(meat_con) %>% summarise_at(.vars = ei_ind,
+                                            .funs = mean, na.rm = TRUE)
+
+dat %>% group_by(meat_con) %>% summarize(index = mean(ei_ind, na.rm = TRUE),
+                                         scores = mean(ei_scores, na.rm = TRUE),
+                                         sum = mean(ei_sum, na.rm = TRUE),
+                                         com = mean(ident_com, na.rm = TRUE),
+                                         sal = mean(ident_sal, na.rm = TRUE),
+                                         pro = mean(ident_pro, na.rm = TRUE),
+                                         env = mean(envorga, na.rm = TRUE),
+                                         know = mean(meat_know, na.rm = TRUE),
+                                         inc = mean(income_p, na.rm = TRUE),
+                                         age = mean(age, na.rm = TRUE),
+                                         isced = mean(isced, na.rm = TRUE))
+
+dat %>% group_by(meat_con) %>% summarize(index = mean(nep_ind, na.rm = TRUE),
+                                         scores = mean(nep_scores, na.rm = TRUE),
+                                         sum = mean(nep_sum, na.rm = TRUE),
+                                         nep1 = mean(nep_gro, na.rm = TRUE),
+                                         nep2 = mean(nep_dom, na.rm = TRUE),
+                                         nep3 = mean(nep_bal, na.rm= TRUE))
+
+lm(meat_con ~ ei_scores, data = dat)
+
+plot(jitter(dat$meat_con, amount = 0.2), jitter(dat$ei_ind, amount = 0.2))
 
 
-#================================================#
-# Visual exploration ####
-#================================================#
+
+### Check out whether the meat consumption is reduced when there is a high
+# identity and it is prominent
+
+dat %>% 
+  group_by(meat_con) %>% 
+  filter(ident_pro > 3 & ident_sal > 3 & ident_com > 3) %>% 
+  summarise(ident = mean(ei_single, na.rm = TRUE),
+            nep = mean(nep_single15, na.rm = TRUE),
+            count = length(ei_single))
+
+dat %>% 
+  group_by(meat_con) %>% 
+  filter(ident_pro < 3 & ident_sal < 3) %>% 
+  summarise(mean = mean(ei_single, na.rm = TRUE),
+            count = length(ei_single))
+
 
 #================================================#
 # INFERENCIAL STATISTICS ####
 #================================================#
+
+reg1 <- lm(meat_con ~ ei_ind , data = dat)
+summary(reg1)
+
+vars
+
+paste(vars, collapse = ' + ')
+
 
 
 dat %>% group_by(ceas097a) %>% summarize(mean(new2, na.rm = TRUE))
@@ -1328,7 +1881,7 @@ ggplot(dat, mapping = aes(ei_ind, meat_con)) +
   geom_point(shape = 1) +
   geom_smooth(method = "lm", fill = "blue", alpha = 0.1) + 
   geom_hline(yintercept = mean(dat$meat_con), linetype="dotted") + #mean of sales
-  geom_vline(xintercept = mean(dat$ei_ind), linetype="dotted") + #mean of advertising
+  geom_vline(xintercept = mean(dat$ei_scores), linetype="dotted") + #mean of advertising
   labs(x = "Advertising expenditures (EUR)", y = "Number of sales") + 
   theme_bw()
 
@@ -1352,8 +1905,8 @@ scatterplot <- ggscatterstats(
 
 ggbetweenstats(
   data = dat,
-  x = ceas097a,
-  y = ei,
+  x = ei_scores,
+  y = meat_con,
   plot.type = "box",
   pairwise.comparisons = TRUE,
   pairwise.annotation = "p.value",
@@ -1363,7 +1916,7 @@ ggbetweenstats(
   mean.plotting = TRUE, # whether mean for each group is to be displayed
   mean.ci = TRUE, # whether to display confidence interval for means
   mean.label.size = 2.5, # size of the label for mean
-  type = "parametric", # which type of test is to be run
+  type = "np", # which type of test is to be run
   k = 3, # number of decimal places for statistical results
   outlier.label.color = "darkgreen", # changing the color for the text label
   title = "Comparison of listening times between groups",
