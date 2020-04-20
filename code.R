@@ -128,13 +128,16 @@ q15bb <- c(
 )
 
 q15z <- c(
-"ceas098a", # Einschätzung Fleischkonsum: An jedem Tag mehrmals 
-"ceas099a", # Einschätzung Fleischkonsum: An jedem Tag einmal 
-"ceas100a", # Einschätzung Fleischkonsum: An 5-6 Tagen pro Woche 
-"ceas101a", # Einschätzung Fleischkonsum: An 3-4 Tagen pro Woche 
-"ceas102a", # Einschätzung Fleischkonsum: An 1-2 Tagen pro Woche 
-"ceas103a", # Einschätzung Fleischkonsum: Seltener 
-"ceas104a" # Einschätzung Fleischkonsum: Personen, die nie Fleisch essen 
+"ceas098a", # Einschätzung Fleischkonsum: An jedem Tag mehrmals 4
+"ceas099a", # Einschätzung Fleischkonsum: An jedem Tag einmal 4
+
+"ceas100a", # Einschätzung Fleischkonsum: An 5-6 Tagen pro Woche 3
+
+"ceas101a", # Einschätzung Fleischkonsum: An 3-4 Tagen pro Woche 3
+"ceas102a", # Einschätzung Fleischkonsum: An 1-2 Tagen pro Woche 2
+
+"ceas103a", # Einschätzung Fleischkonsum: Seltener 1
+"ceas104a" # Einschätzung Fleischkonsum: Personen, die nie Fleisch essen  1
 )
 
 #CC 08/2015
@@ -681,6 +684,37 @@ ifelse(dat$meat_con == 7, 1,NA)))))))
 
 # overview of cases
 prop.table(table(dat$meat_con))
+
+tabyl(dat$meat_con)
+
+taby
+
+# Creating a second meat_consumption variable that is easier to interpret
+
+dat %>% group_by(meat_con) %>% 
+  summarise(mean = mean(ei_single, na.rm = TRUE), n = n()) %>% 
+  mutate(per = n / sum(n)*100) %>% 
+  mutate(cum = cumsum(per))
+
+dat <- dat %>% mutate(meat_concat = ifelse(meat_con %in% c(1,2), 1,
+                                     ifelse(meat_con %in% c(3,4), 2,
+                                     ifelse(meat_con %in% c(5), 3,
+                                     ifelse(meat_con %in% c(6,7), 4, NA)))))
+
+dat %>% group_by(meat_concat) %>% 
+  summarise(mean = mean(ei_single, na.rm = TRUE), n = n()) %>% 
+  mutate(per = n / sum(n)*100) %>% 
+  mutate(cum = cumsum(per))
+
+dat <- dat %>% mutate(meat_concat2 = ifelse(meat_con %in% c(1,2), 1,
+                                     ifelse(meat_con %in% c(3,4), 2,
+                                     ifelse(meat_con %in% c(5,6), 3,
+                                     ifelse(meat_con %in% c(7), 4, NA)))))
+
+dat %>% group_by(meat_concat2) %>% 
+  summarise(mean = mean(ei_single, na.rm = TRUE), n = n()) %>% 
+  mutate(per = n / sum(n)*100) %>% 
+  mutate(cum = cumsum(per))
 
 
 
@@ -1281,6 +1315,8 @@ dat[,q15bb] <- lapply(dat[,q15bb], function(x) ifelse(x > 7, NA, x))
 dat <- dat %>% mutate(meat_know = ifelse(ceas108a == 1, 1,
                                   ifelse(ceas108a == 2 & ceas109a == 1,1,0)))
 
+dat <- dat %>% mutate(meat_know2 = ifelse(ceas108a == 7, NA, ceas108a))
+
 # Other Code that was tested (can be deleted if happy with results)
 #dat <- dat %>% mutate(meat_know3 = ifelse(ceas108a %in% c(1,2), 1,0))
 #dat <- dat %>% mutate(meat_know2 = ifelse(ceas108a %in% c(1), 1,0))
@@ -1645,7 +1681,7 @@ vars <- c("ei_single","ei_fac1","ei_fac2","ident_sal","ident_pro","ident_com",
           "lm_bio","strom_öko","ekw","envorga","age","sex","income_p", "income_hh", "isced", "edu", "job")
 
 vars <- c("ei_single","ident_sal","ident_pro","ident_com",
-          "nep_single15", "meat_con","meat_know",
+          "nep_single15", "meat_con","meat_concat2", "meat_concat", "meat_know","meat_know2",
           "meat_pop_more", "meat_norm", "meat_norm_diff","lm_reg", 
           "lm_bio","strom_öko","age","sex","income_p","income_hh", "isced")
 
@@ -1705,7 +1741,13 @@ dat %>% group_by(meat_con,ceas108a) %>%
   spread(ceas108a, n) %>%
   adorn_totals(c("row", "col")) %>% 
   adorn_percentages("row", na.rm = TRUE) %>%
-  adorn_pct_formatting()
+  adorn_pct_formatting() 
+#   kable("latex", booktabs = T, caption = "Überblick der Variablen") %>% 
+#   as_image(file = "./test1.png")
+# plot(magick::image_read("./test1.png"))
+
+
+
 
 dat %>% group_by(meat_con) %>% 
   filter(ceas108a == 1 & ident_pro > 3 & ei_single > 1.5) %>% 
@@ -1726,9 +1768,32 @@ dat %>%
 
 dat %>% group_by(meat_con) %>% filter(ident_pro > 3) %>%  summarise(mean = mean(ei_single, na.rm = TRUE), n = n())
 
+# Angemessenheit Fleischkonsum (vor Hintergrund Treibhausgas) X meat_consumption
+dat %>% group_by(meat_con) %>% summarise_at(.vars = c("meat_norm","meat_norm_diff","ident_pro", "ident_sal", "ei_single"),
+                                            .funs = mean, na.rm = TRUE)
+
+
+# amount of people who have a strong identity + high prominence and salience
+x <- dat %>% 
+  group_by(meat_con) %>% 
+  filter(ident_pro > 3 & ident_sal > 3 & ei_single > 1) %>% 
+  summarise(n = n())
+
+y <- dat %>% group_by(meat_con) %>% summarise(n = n())
+
+x %>% bind_cols(select(y, n)) %>% mutate(amount = n/n1*100)
 
 # Einschätzung Treibhausgasausstoß X Norm wie viel Fleisch wäre okay zu essen?
-dat %>% group_by(meat_norm) %>% summarise(meat) 
+dat %>% group_by(meat_norm) %>% summarise(mean = mean(ceas108a, na.rm = TRUE), n = n())
+
+# only for people who understood question ceas 108a correct?
+dat %>% group_by(meat_norm) %>% 
+  filter(ceas108a %in% c(1:6)) %>%  
+  summarise_at(.vars = c("ceas108a", "meat_know"),
+               .funs = mean, na.rm = TRUE)
+
+
+dat %>% tabyl(meat_con, ceas108a)
 
 #%>% kable("latex", booktabs = T)
 
@@ -1782,7 +1847,8 @@ corstarsl <- function(x){
 
 corstarsl(dat[,vars])
 
-test <- xtable(corstarsl(dat[,vars]))
+test <- xtable::xtable(corstarsl(dat[,vars]))
+
 
 
 
@@ -1861,6 +1927,25 @@ dat %>%
 #================================================#
 # INFERENCIAL STATISTICS ####
 #================================================#
+
+
+
+
+#--------------------------------------------------#
+# Korrelationsmatrix                             
+#--------------------------------------------------#
+  
+
+
+
+  
+
+#--------------------------------------------------#
+# Regression                             
+#--------------------------------------------------#
+
+
+
 
 reg1 <- lm(meat_con ~ ei_ind , data = dat)
 summary(reg1)
