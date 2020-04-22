@@ -16,6 +16,12 @@ library(dplyr)
 options(digits = 2)
 options(max.print = 100)
 
+
+#--------------------------------------------------#
+# Defining Latex working path for graphics
+#--------------------------------------------------#
+latexpath <- "C:/Users/Ulli/Desktop/Thesis/thesis_small/graphics/"
+
 #================================================#
 # Download necessary files ####
 #================================================#
@@ -697,9 +703,10 @@ dat %>% group_by(meat_con) %>%
   mutate(cum = cumsum(per))
 
 dat <- dat %>% mutate(meat_concat = ifelse(meat_con %in% c(1,2), 1,
-                                     ifelse(meat_con %in% c(3,4), 2,
-                                     ifelse(meat_con %in% c(5), 3,
-                                     ifelse(meat_con %in% c(6,7), 4, NA)))))
+                                    ifelse(meat_con %in% c(3,4), 2,
+                                    ifelse(meat_con %in% c(5,6), 3,
+                                    ifelse(meat_con %in% c(7), 4, NA)))))
+
 
 dat %>% group_by(meat_concat) %>% 
   summarise(mean = mean(ei_single, na.rm = TRUE), n = n()) %>% 
@@ -708,8 +715,10 @@ dat %>% group_by(meat_concat) %>%
 
 dat <- dat %>% mutate(meat_concat2 = ifelse(meat_con %in% c(1,2), 1,
                                      ifelse(meat_con %in% c(3,4), 2,
-                                     ifelse(meat_con %in% c(5,6), 3,
-                                     ifelse(meat_con %in% c(7), 4, NA)))))
+                                     ifelse(meat_con %in% c(5), 3,
+                                     ifelse(meat_con %in% c(6,7), 4, NA)))))
+
+
 
 dat %>% group_by(meat_concat2) %>% 
   summarise(mean = mean(ei_single, na.rm = TRUE), n = n()) %>% 
@@ -1168,7 +1177,7 @@ q15d_ind <- q15d
 
 # Factor Scores
 # Orthogonal factor rotation without the 07 item, which loads to high on other factors
-pc4b <- principal(dat[,q15d], nfactors = 1, rotate = "none")
+pc4b <- principal(dat[,q15d], nfactors = 1, rotate = "none", scores = TRUE, missing = TRUE)
 pc4b
 print.psych(pc4b, cut = 0.3)
 
@@ -1177,6 +1186,9 @@ dat <- cbind(dat, pc4b$scores)
 
 dat <- dat %>% rename("nep_single15" = "PC1")
 
+dat %>% select(q15d) %>% summarise_all(funs(sum(is.na(.))))
+
+View(dat %>% select(q15d))
 
 # Factor-Based Scores (Summed up and standardized to 1-10)
 # excluding item 6 to keep things consistent (Might need to reverse this, depending on how I proceed)
@@ -1189,14 +1201,16 @@ dat$nep_sum <- dat %>% select(q15d_ind) %>%
 # counting the NAs
 dat$nep_nas <- apply(dat[,q15d_ind], MARGIN = 1, function(x) sum(is.na(x)))
 
+# if there are more than 50% NAs, set the scores to NA
+dat <- dat %>% mutate(nep_single15 = ifelse(nep_nas > round(length(q15d)/2), NA, nep_single15))
+
 # quick check
 dat[,c(q15d_ind, "nep_sum", "nep_nas")]
 
 # if there are more than 50% Nas don´t calculate the mean, otherwise take the average
 dat <- dat %>% mutate(nep_ind15 = ifelse(nep_nas > round(length(q15d_ind)/2)  , NA, 
-                                       ifelse(nep_nas == 0, nep_sum/length(q15d_ind),
-                                              ifelse(nep_nas !=0, nep_sum/(length(q15d_ind)-nep_nas),NA))))
-
+                                  ifelse(nep_nas == 0, nep_sum/length(q15d_ind),
+                                  ifelse(nep_nas !=0, nep_sum/(length(q15d_ind)-nep_nas),NA))))
 
 dat %>% select(q15d_ind,"nep_sum","nep_nas","nep_ind15")
 
@@ -1316,6 +1330,39 @@ dat <- dat %>% mutate(meat_know = ifelse(ceas108a == 1, 1,
                                   ifelse(ceas108a == 2 & ceas109a == 1,1,0)))
 
 dat <- dat %>% mutate(meat_know2 = ifelse(ceas108a == 7, NA, ceas108a))
+
+library(janitor)
+dat %>% group_by(ceas108a, meat_con) %>% summarise(n = n()) %>% spread(ceas108a, n) %>% janitor::adorn_percentages()*100
+
+
+View(dat %>% filter(meat_con == 1) %>% select(ceas108a, ceas109a, ceas107a, ceas110a:ceas113a))
+
+
+dat %>% drop_na(ceas108a) %>% 
+  group_by(meat_con, ceas108a) %>% 
+  summarise(n = n()) %>% 
+  spread(ceas108a, n) %>%
+  select(-'0') %>% 
+  adorn_totals(where = "col") %>% 
+  adorn_percentages() %>% 
+  adorn_pct_formatting(digits = 0) %>% 
+  adorn_title(col_name = "Treibhausgas Fleisch (rank)", row_name = "Fleischkonsum", placement = "combined") %>% 
+  kable(format = "latex", booktabs = TRUE, caption = "Antwortverhalten für die Fragen Eingeschätzter Fleischkonsum und Einschätzung des Treibhausgasausstoßes von Fleisch", label = "meat_know") %>%
+  save_kable(paste0(latexpath, "appendix/meat_know"), keep_tex = TRUE) %>% 
+  as_image(file = paste0(latexpath, "appendix/meat_know.png"))
+
+
+
+
+
+
+#plot(magick::image_read("C:/Users/Ulli/Desktop/Thesis/thesis_small/graphics/descriptives/meat_know.png"))
+# kable(tmp, "latex", booktabs = T, caption = "Überblick der Variablen") %>% as_image(file = "./test1.png")
+# plot(magick::image_read("./test1.png"))
+#kable(dt, "latex", booktabs = T) 
+#df <- dat[1:10,vars]
+
+
 
 # Other Code that was tested (can be deleted if happy with results)
 #dat <- dat %>% mutate(meat_know3 = ifelse(ceas108a %in% c(1,2), 1,0))
@@ -1670,7 +1717,11 @@ dat %>% select(job, job2, edu, edu2, uni, isced, isced_in)
 
 
 #================================================#
-# Setting up a summary descriptive table ####
+# INITIAL EXPLORATION ####
+#================================================#
+
+#================================================#
+# Descriptive Summary Statistics ####
 #================================================#
 
 # relevant variable list
@@ -1680,10 +1731,8 @@ vars <- c("ei_single","ei_fac1","ei_fac2","ident_sal","ident_pro","ident_com",
           "meat_pop_more", "meat_norm", "meat_norm_diff","lm_reg", 
           "lm_bio","strom_öko","ekw","envorga","age","sex","income_p", "income_hh", "isced", "edu", "job")
 
-vars <- c("ei_single","ident_sal","ident_pro","ident_com",
-          "nep_single15", "meat_con","meat_concat2", "meat_concat", "meat_know","meat_know2",
-          "meat_pop_more", "meat_norm", "meat_norm_diff","lm_reg", 
-          "lm_bio","strom_öko","age","sex","income_p","income_hh", "isced")
+vars <- c("ei_ind","ident_sal","ident_pro","ident_com",
+          "nep_single15", "meat_con","meat_concat", "meat_know", "meat_norm","age","sex","income_p","income_hh", "isced")
 
 
 library(knitr)
@@ -1720,88 +1769,10 @@ rownames(tmp) <- c("Environmental Identity (Index)",
 # plot(magick::image_read("./test1.png"))
 
 
+
 #================================================#
-# Initial exploration ####
+# Correlation Matrix####
 #================================================#
-
-
-  
-
-#--------------------------------------------------#
-# Crosstabs                             
-#--------------------------------------------------#
-
-library(janitor)
-
-dat %>% tabyl(ceas108a, ei_single, show_missing_levels = FALSE) 
-
-
-dat %>% group_by(meat_con,ceas108a) %>% 
-  summarise(n = n()) %>% 
-  spread(ceas108a, n) %>%
-  adorn_totals(c("row", "col")) %>% 
-  adorn_percentages("row", na.rm = TRUE) %>%
-  adorn_pct_formatting() 
-#   kable("latex", booktabs = T, caption = "Überblick der Variablen") %>% 
-#   as_image(file = "./test1.png")
-# plot(magick::image_read("./test1.png"))
-
-
-
-
-dat %>% group_by(meat_con) %>% 
-  filter(ceas108a == 1 & ident_pro > 3 & ei_single > 1.5) %>% 
-  summarise(n = n()) %>% 
-  adorn_percentages("col")
-
-
-# environmental identity X meat consumption
-
-dat %>% group_by(meat_con) %>% summarise(mean = mean(ei_single, na.rm = TRUE), n = n())
-
-
-# environmental identity x prominence of identity
-
-dat %>% 
-
-# environmental identity X meat consumption for cases with high prominence
-
-dat %>% group_by(meat_con) %>% filter(ident_pro > 3) %>%  summarise(mean = mean(ei_single, na.rm = TRUE), n = n())
-
-# Angemessenheit Fleischkonsum (vor Hintergrund Treibhausgas) X meat_consumption
-dat %>% group_by(meat_con) %>% summarise_at(.vars = c("meat_norm","meat_norm_diff","ident_pro", "ident_sal", "ei_single"),
-                                            .funs = mean, na.rm = TRUE)
-
-
-# amount of people who have a strong identity + high prominence and salience
-x <- dat %>% 
-  group_by(meat_con) %>% 
-  filter(ident_pro > 3 & ident_sal > 3 & ei_single > 1) %>% 
-  summarise(n = n())
-
-y <- dat %>% group_by(meat_con) %>% summarise(n = n())
-
-x %>% bind_cols(select(y, n)) %>% mutate(amount = n/n1*100)
-
-# Einschätzung Treibhausgasausstoß X Norm wie viel Fleisch wäre okay zu essen?
-dat %>% group_by(meat_norm) %>% summarise(mean = mean(ceas108a, na.rm = TRUE), n = n())
-
-# only for people who understood question ceas 108a correct?
-dat %>% group_by(meat_norm) %>% 
-  filter(ceas108a %in% c(1:6)) %>%  
-  summarise_at(.vars = c("ceas108a", "meat_know"),
-               .funs = mean, na.rm = TRUE)
-
-
-dat %>% tabyl(meat_con, ceas108a)
-
-#%>% kable("latex", booktabs = T)
-
-
-
-#--------------------------------------------------#
-# Correlation Matrix                             
-#--------------------------------------------------#
 
 dat[,vars]
 
@@ -1851,61 +1822,86 @@ test <- xtable::xtable(corstarsl(dat[,vars]))
 
 
 
+#================================================#
+# Crosstabs ####
+#================================================#
 
-table(dat$meat_know, dat$meat)
+library(janitor)
 
-
-round(prop.table(xtabs(~meat_con + meat_norm_diff, data = dat),1),2)
-
-prop.table(xtabs(~meat_con + meat_pop_more, data = dat),1)
-prop.table(xtabs(~meat_know + meat_norm, data = dat),1)
-
-
-dat %>% group_by(meat_con) %>% summarise(mean(meat_norm_diff, na.rm = TRUE))
-
-ftable(xtabs(~ meat_con + meat_pop_more, data = dat))
-ftable(xtabs(~ meat_con + mean(ei_ind) + meat_know, data = dat))
-table(dat$meat_con, dat$meat_pop_more)
+dat %>% tabyl(ceas108a, ei_single, show_missing_levels = FALSE) 
 
 
+dat %>% group_by(meat_con,ceas108a) %>% 
+  summarise(n = n()) %>% 
+  spread(ceas108a, n) %>%
+  adorn_totals(c("row", "col")) %>% 
+  adorn_percentages("row", na.rm = TRUE) %>%
+  adorn_pct_formatting() 
+#   kable("latex", booktabs = T, caption = "Überblick der Variablen") %>% 
+#   as_image(file = "./test1.png")
+# plot(magick::image_read("./test1.png"))
 
 
+dat %>% group_by(meat_con) %>% 
+  filter(ceas108a == 1 & ident_pro > 3 & ei_single > 1.5) %>% 
+  summarise(n = n()) %>% 
+  adorn_percentages("col")
 
-table(dat$meat_con)
-hist(dat$ei_ind)
-hist(dat$ei_scores)
-hist(dat$ei_sum)
 
-dat %>% group_by(meat_con) %>% summarise_at(.vars = c("ei_ind", "ei_scores", "ident_pro"),
+# environmental identity X meat consumption
+
+dat %>% group_by(meat_con) %>% summarise(mean = mean(ei_single, na.rm = TRUE), n = n())
+
+
+# environmental identity x prominence of identity
+
+dat %>% 
+
+# environmental identity X meat consumption for cases with high prominence
+
+dat %>% group_by(meat_con) %>% filter(ident_pro > 3) %>%  summarise(mean = mean(ei_single, na.rm = TRUE), n = n())
+
+# Angemessenheit Fleischkonsum (vor Hintergrund Treibhausgas) X meat_consumption
+dat %>% group_by(meat_con) %>% summarise_at(.vars = c("meat_norm","meat_norm_diff","ident_pro", "ident_sal", "ei_single"),
                                             .funs = mean, na.rm = TRUE)
 
-dat %>% group_by(meat_con) %>% summarise_at(.vars = ei_ind,
-                                            .funs = mean, na.rm = TRUE)
 
-dat %>% group_by(meat_con) %>% summarize(index = mean(ei_ind, na.rm = TRUE),
-                                         scores = mean(ei_scores, na.rm = TRUE),
-                                         sum = mean(ei_sum, na.rm = TRUE),
-                                         com = mean(ident_com, na.rm = TRUE),
-                                         sal = mean(ident_sal, na.rm = TRUE),
-                                         pro = mean(ident_pro, na.rm = TRUE),
-                                         env = mean(envorga, na.rm = TRUE),
-                                         know = mean(meat_know, na.rm = TRUE),
-                                         inc = mean(income_p, na.rm = TRUE),
-                                         age = mean(age, na.rm = TRUE),
-                                         isced = mean(isced, na.rm = TRUE))
+# amount of people who have a strong identity + high prominence and salience
+x <- dat %>% 
+  group_by(meat_con) %>% 
+  filter(ident_pro > 3 & ident_sal > 3 & ei_single > 1) %>% 
+  summarise(n = n())
 
-dat %>% group_by(meat_con) %>% summarize(index = mean(nep_ind, na.rm = TRUE),
-                                         scores = mean(nep_scores, na.rm = TRUE),
-                                         sum = mean(nep_sum, na.rm = TRUE),
-                                         nep1 = mean(nep_gro, na.rm = TRUE),
-                                         nep2 = mean(nep_dom, na.rm = TRUE),
-                                         nep3 = mean(nep_bal, na.rm= TRUE))
+y <- dat %>% group_by(meat_con) %>% summarise(n = n())
 
-lm(meat_con ~ ei_scores, data = dat)
+x %>% bind_cols(select(y, n)) %>% mutate(amount = n/n1*100)
 
-plot(jitter(dat$meat_con, amount = 0.2), jitter(dat$ei_ind, amount = 0.2))
+# Einschätzung Treibhausgasausstoß X Norm wie viel Fleisch wäre okay zu essen?
+dat %>% group_by(meat_norm) %>% summarise(mean = mean(ceas108a, na.rm = TRUE), n = n())
+
+# only for people who understood question ceas 108a correct?
+dat %>% group_by(meat_norm) %>% 
+  filter(ceas108a %in% c(1:6)) %>%  
+  summarise_at(.vars = c("ceas108a", "meat_know"),
+               .funs = mean, na.rm = TRUE)
 
 
+# high prominence and knowledge
+
+dat %>% group_by(meat_con) %>% summarise(mean = mean(ident_pro, na.rm = TRUE), 
+                                         know = mean(meat_know2, na.rm = TRUE)) 
+
+
+
+dat %>% tabyl(meat_con, ceas108a)
+
+#%>% kable("latex", booktabs = T)
+
+
+
+#================================================#
+# Calculations ####
+#================================================#
 
 ### Check out whether the meat consumption is reduced when there is a high
 # identity and it is prominent
@@ -1923,57 +1919,395 @@ dat %>%
   summarise(mean = mean(ei_single, na.rm = TRUE),
             count = length(ei_single))
 
-
 #================================================#
 # INFERENCIAL STATISTICS ####
 #================================================#
 
+#================================================#
+# Graphical Illustrations ####
+#================================================#
 
-
-
-#--------------------------------------------------#
-# Korrelationsmatrix                             
-#--------------------------------------------------#
-  
-
-
-
-  
-
-#--------------------------------------------------#
-# Regression                             
-#--------------------------------------------------#
-
-
-
-
-reg1 <- lm(meat_con ~ ei_ind , data = dat)
-summary(reg1)
-
-vars
-
-paste(vars, collapse = ' + ')
-
-
-
-dat %>% group_by(ceas097a) %>% summarize(mean(new2, na.rm = TRUE))
+plot(jitter(dat$meat_concat, jitter(0.6)), jitter(dat$ident_pro))
 
 
 library(ggplot2)
 library(ggstatsplot)
 
-ggplot(dat, mapping = aes(ei_ind, meat_con)) + 
+# ggplot(dat, mapping = aes(ei_single, meat_concat)) + 
+#   geom_point(shape = 1) +
+#   geom_smooth(method = "lm", fill = "blue", alpha = 0.1) + 
+#   geom_hline(yintercept = mean(dat$meat_con), linetype="dotted") + #mean of sales
+#   geom_vline(xintercept = mean(dat$ei_scores), linetype="dotted") + #mean of advertising
+#   labs(x = "Advertising expenditures (EUR)", y = "Number of sales") + 
+#   theme_bw()
+# 
+# scatterplot <- ggscatterstats(
+#   data = dat,
+#   x = ei_single,
+#   y = meat_concat,
+#   xlab = "Advertising expenditure (EUR)", # label for x axis
+#   ylab = "Sales", # label for y axis
+#   line.color = "black", # changing regression line color line
+#   title = "Advertising expenditure and Sales", # title text for the plot
+#   marginal.type = "histogram", # type of marginal distribution to be displayed
+#   xfill = "steelblue", # color fill for x-axis marginal distribution
+#   yfill = "darkgrey", # color fill for y-axis marginal distribution
+#   xalpha = 0.6, # transparency for x-axis marginal distribution
+#   yalpha = 0.6, # transparency for y-axis marginal distribution
+#   bf.message = FALSE,
+#   messages = FALSE # turn off messages and notes
+# )
+# 
+# 
+# ggbetweenstats(
+#   data = dat,
+#   x = meat_concat,
+#   y = ident_pro,
+#   plot.type = "box",
+#   pairwise.comparisons = TRUE,
+#   pairwise.annotation = "p.value",
+#   p.adjust.method = "bonferroni",
+#   effsize.type = "partial_eta",
+#   var.equal = FALSE,
+#   mean.plotting = TRUE, # whether mean for each group is to be displayed
+#   mean.ci = TRUE, # whether to display confidence interval for means
+#   mean.label.size = 2.5, # size of the label for mean
+#   type = "p", # which type of test is to be run
+#   k = 3, # number of decimal places for statistical results
+#   outlier.label.color = "darkgreen", # changing the color for the text label
+#   title = "Comparison of listening times between groups",
+#   xlab = "Experimental group", # label for the x-axis variable
+#   ylab = "Listening time", # label for the y-axis variable
+#   messages = FALSE,
+#   bf.message = FALSE
+# )
+# 
+# ggstatsplot::grouped_ggbetweenstats(
+#   data = dplyr::filter(
+#     ggstatsplot::movies_long,
+#     genre %in% c("Action", "Comedy"),
+#     mpaa %in% c("R", "PG")
+#   ),
+#   x = genre,
+#   y = rating,
+#   grouping.var = mpaa,
+#   results.subtitle = FALSE,
+#   ggplot.component = ggplot2::scale_y_continuous(
+#     breaks = seq(1, 9, 1),
+#     limits = (c(1, 9))
+#   ),
+#   messages = FALSE
+# )
+
+
+ggstatsplot::grouped_ggbetweenstats(
+  data = dat,
+  x = meat_concat,
+  y = ei_ind,
+  grouping.var = meat_know,
+  conf.level = 0.99
+)
+
+
+dat %>%
+  ggplot(aes(fill=meat_know, y=ei_ind, x=factor(meat_concat))) + 
+  geom_violin(position="dodge", alpha=0.5, outlier.colour="transparent") +
+  scale_fill_viridis(discrete=T, name="") +
+  theme_ipsum()  +
+  xlab("") +
+  ylab("Tip (%)") +
+  ylim(0,40)
+
+
+
+ggplot(dat, aes(fill=meat_know, y=ei_ind, x=factor(meat_concat))) + 
+  geom_boxplot()
+
+
+ggplot(dat %>% drop_na(meat_know), aes(fill=meat_know, y=ident_pro, x=factor(meat_con))) + 
+  geom_boxplot()
+
+
+  
+
+#+++++++++++++++++++++++++
+# Function to calculate the mean and the standard deviation
+# for each group
+#+++++++++++++++++++++++++
+# data : a data frame
+# varname : the name of a column containing the variable
+#to be summariezed
+# groupnames : vector of column names to be used as
+# grouping variables
+data_summary <- function(data, varname, groupnames){
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      sd = sd(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-plyr::ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- plyr::rename(data_sum, c("mean" = varname))
+  return(data_sum)
+}
+
+df2 <- data_summary(dat, varname="ident_pro", 
+                    groupnames=c("meat_con","meat_know"))
+
+# Convert dose to a factor variable
+df2$meat_con=as.factor(df2$meat_con)
+head(df2)
+
+
+
+dat %>% 
+  tidyr::drop_na(c("ident_pro_rec2","meat_know")) %>% 
+  group_by(ident_pro_rec2, meat_know) %>% 
+  summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% arrange(ident_pro_rec2) %>% 
+  ggplot(aes(x=factor(ident_pro_rec2), y=meat_con, group=meat_know, color=meat_know)) + 
+  geom_line() + 
+  geom_point() +
+  geom_smooth(method = "lm", alpha = 0.1)
+
+
+
+ggplot(df2 %>% tidyr::drop_na(meat_know), aes(x=ident_pro, y=meat_con, group=meat_know, color=meat_know)) + 
+  geom_line() +
+  geom_point() +
+  geom_errorbar(aes(ymin=meat_con-sd, ymax=meat_con+sd), width=.2,
+                position=position_dodge(0.05))
+
+
+
+# variable meat_know
+
+# creating a backup 
+backup <- dat
+
+# creating factors
+
+dat$meat_know <- factor(dat$meat_know, levels = c(0:1), labels = c("don´t know", "know"))
+dat$sex <- factor(dat$sex, levels = c(0:1), labels = c("männlich", "weiblich"))
+dat$meat_pop_more <- factor(dat$meat_pop_more, levels = c(0:1), labels = c("Bev_weniger", "Bev_mehr"))
+
+
+
+
+table(dat$meat_norm, dat$meat_con, deparse.level = 2)
+#================================================#
+# REGRESSION ####
+#================================================#
+
+
+### Recoding work
+dat <- dat %>% mutate(ident_pro_rec = ifelse(ident_pro <= mean(ident_pro, na.rm = T), 0,
+                                      ifelse(ident_pro > mean(ident_pro, na.rm = T), 1, NA)))
+
+
+
+dat <- dat %>% mutate(ident_pro_rec2 = ifelse(ident_pro >= 4.2, 4,
+                                       ifelse(ident_pro >= 3.3, 3,
+                                       ifelse(ident_pro >= 3.0, 2,
+                                       ifelse(ident_pro < 3.0, 1, NA)))))
+
+dat$ident_pro_rec2 <- factor(dat$ident_pro_rec2, levels = c(1:4), labels = c("sehr niedrig", "niedrig", "hoch", "sehr hoch"))
+
+dat <- dat %>% mutate(ident_pro_rec = ifelse(ident_pro <= mean(ident_pro, na.rm = T), 0,
+                                             ifelse(ident_pro > mean(ident_pro, na.rm = T), 1, NA)))
+
+dat$ident_pro_rec <- factor(dat$ident_pro_rec, levels = c(0:1), labels = c("lower", "higher"))
+
+library(tidyr)
+### graphics
+dat %>% 
+  filter(!is.na(meat_know)) %>% 
+  ggplot(aes(fill=meat_know, y=ei_ind, x=factor(meat_concat)))+
+        geom_boxplot()
+
+
+dat %>% group_by(meat_con) %>% summarise(mean(ident_pro, na.rm= TRUE))
+
+
+#--------------------------------------------------#
+# Model 1: Identity 
+#--------------------------------------------------#
+
+reg1 <- lm(meat_concat ~ ei_ind , data = dat)
+summary(reg1)
+
+dat %>% 
+  group_by(ei_ind) %>% 
+  summarise(meat_con = mean(meat_concat, na.rm = TRUE)) %>% 
+  ggplot(aes(x = ei_ind, y = meat_con)) + geom_point() + geom_smooth(method = "lm")
+
+plot(reg1, 1)
+plot(reg1, 2)
+shapiro.test(resid(reg6))
+plot(reg1, 3)
+plot(reg1, 4)
+
+
+#--------------------------------------------------#
+# Model 2: Identity + Identity Prominence
+#--------------------------------------------------#
+reg2<-update(reg1, .~. + ident_pro)
+summary(reg2)
+
+
+dat %>% 
+  tidyr::drop_na(ident_pro_rec2) %>% 
+  group_by(ident_pro_rec2, ei_ind) %>% 
+  summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% 
+  ggplot(aes(x = ei_ind, y = meat_con, group = ident_pro_rec2, color = ident_pro_rec2)) + geom_point() + geom_line()
+
+
+reg3<-update(reg2, .~. + ident_sal + ident_com)
+summary(reg3)
+plot(reg3)
+
+
+
+
+
+
+
+#--------------------------------------------------#
+# Model 2: Socials
+#--------------------------------------------------#
+reg4 <- update(reg3, .~.  + meat_know + meat_norm)
+summary(reg4)
+
+dat %>% 
+  tidyr::drop_na(c("meat_norm", "meat_know")) %>% 
+  group_by(meat_norm, meat_know) %>% 
+  summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% 
+  ggplot(aes(x = meat_norm, y = meat_con, group = meat_know, color = meat_know)) + geom_point() + geom_line()
+
+
+
+
+
+# Interaction Effekt Meat Norm
+
+# identity prominence:
+# Mit steigender identity prominence verändert sich auch der Fleischkonsum um x Punkte
+# (Wenn man nicht über die Schädlichkeit von Fleisch für die Umwelt Bescheid weiß, steigt es sogar)
+
+# Für Leute, die nicht über Umweltbelastung von Fleisch Bescheid wissen steigt mit zunehmender Wichtigkeit der Umweltidentität
+# auch der Fleischkonsum 
+
+# Interaction:
+# Mit steigender Wichtigkeit der Umweltidentität
+
+# Model 4: Other activities 
+#reg4 <- update(reg3, .~. + strom_öko + lm_reg + lm_bio)
+#summary(reg4)
+
+# Model 5:
+reg5 <- update(reg4, .~. + nep_single15 + sex + age + isced + income_hh)
+summary(reg5)
+
+
+
+
+
+
+reg6 <- update(reg5, .~. + ident_pro:meat_know)
+summary(reg6)
+lm.beta::lm.beta(reg6)
+
+1/vif(reg5)
+mean(vif(reg5))
+
+
+
+
+final_reg <- reg5
+
+
+
+# Multicollinearity
+
+library(Hmisc)
+library(car)
+rcorr(as.matrix(regression[,c("adspend","airplay","starpower")]))
+plot(regression[,c("adspend","airplay","starpower")])
+
+rcorr(as.matrix(dat[,vs]))
+plot(dat[,vs])
+
+ggcorrmat(
+  data = dat[,vs],
+  matrix.type = "upper", # type of visualization matrix
+  colors = c("darkgrey", "white", "steelblue"),
+  title = "Correlalogram of independent variables")
+
+
+
+
+# alternatively...
+library(ggstatsplot)
+ggcorrmat(
+  data = regression[,c("adspend","airplay","starpower")],
+  matrix.type = "upper", # type of visualization matrix
+  colors = c("darkgrey", "white", "steelblue"),
+  title = "Correlalogram of independent variables")
+
+# compute variance inflation factors
+1/vif(multiple_regression)
+
+
+
+
+# The following code is taken from the fourth chapter of the online script, which provides more detailed explanations:
+# https://imsmwu.github.io/MRDA2018/_book/regression.html
+
+#-------------------------------------------------------------------#
+#---------------------Install missing packages----------------------#
+#-------------------------------------------------------------------#
+
+# At the top of each script this code snippet will make sure that all required packages are installed
+
+req_packages <- c("Hmisc", "psych", "plyr", "ggplot2", "lm.beta", "car", "ggstatsplot", "stargazer", "sandwich", "lmtest", "boot")
+req_packages <- req_packages[!req_packages %in% installed.packages()]
+lapply(req_packages, install.packages)
+
+#-------------------------------------------------------------------#
+#----------------------------Correlation----------------------------#
+#-------------------------------------------------------------------#
+
+#set options
+options(scipen = 999, digits = 4) 
+
+#-------------------------------------------------------------------#
+#----------------------Simple linear regression---------------------#
+#-------------------------------------------------------------------#
+
+# Load and inspect data
+regression <- read.table("https://raw.githubusercontent.com/IMSMWU/Teaching/master/MRDA2017/music_sales_regression.dat", 
+                         sep = "\t", 
+                         header = TRUE) #read in data
+regression$country <- factor(regression$country, levels = c(0:1), labels = c("local", "international")) #convert grouping variable to factor
+regression$genre <- factor(regression$genre, levels = c(1:3), labels = c("rock", "pop","electronic")) #convert grouping variable to factor
+head(regression)
+
+# Descriptive statistics
+psych::describe(regression)
+
+# Plot the data 
+ggplot(regression, mapping = aes(adspend, sales)) + 
   geom_point(shape = 1) +
   geom_smooth(method = "lm", fill = "blue", alpha = 0.1) + 
-  geom_hline(yintercept = mean(dat$meat_con), linetype="dotted") + #mean of sales
-  geom_vline(xintercept = mean(dat$ei_scores), linetype="dotted") + #mean of advertising
+  geom_hline(yintercept = mean(regression$sales), linetype="dotted") + #mean of sales
+  geom_vline(xintercept = mean(regression$adspend), linetype="dotted") + #mean of advertising
   labs(x = "Advertising expenditures (EUR)", y = "Number of sales") + 
   theme_bw()
 
+# Alternatively, using ggstatsplot
+library(ggstatsplot)
 scatterplot <- ggscatterstats(
-  data = dat,
-  x = ei_ind,
-  y = meat_con,
+  data = regression,
+  x = adspend,
+  y = sales,
   xlab = "Advertising expenditure (EUR)", # label for x axis
   ylab = "Sales", # label for y axis
   line.color = "black", # changing regression line color line
@@ -1986,27 +2320,206 @@ scatterplot <- ggscatterstats(
   bf.message = FALSE,
   messages = FALSE # turn off messages and notes
 )
+scatterplot
+#save plot (optional)
+
+ggsave("scatterplot.jpg", height = 6, width = 7.5,scatterplot)
 
 
-ggbetweenstats(
-  data = dat,
-  x = ei_scores,
-  y = meat_con,
-  plot.type = "box",
-  pairwise.comparisons = TRUE,
-  pairwise.annotation = "p.value",
-  p.adjust.method = "bonferroni",
-  effsize.type = "partial_eta",
-  var.equal = FALSE,
-  mean.plotting = TRUE, # whether mean for each group is to be displayed
-  mean.ci = TRUE, # whether to display confidence interval for means
-  mean.label.size = 2.5, # size of the label for mean
-  type = "np", # which type of test is to be run
-  k = 3, # number of decimal places for statistical results
-  outlier.label.color = "darkgreen", # changing the color for the text label
-  title = "Comparison of listening times between groups",
-  xlab = "Experimental group", # label for the x-axis variable
-  ylab = "Listening time", # label for the y-axis variable
-  messages = FALSE,
-  bf.message = FALSE
-)
+#-------------------------------------------------------------------#
+#--------------------Multiple linear regression---------------------#
+#-------------------------------------------------------------------#
+
+# Confidence intervals
+confint(final_reg)
+
+# visualization
+ggcoefstats(x = final_reg,
+            title = "Sales predicted by adspend, airplay, & starpower")
+#save plot (optional)
+
+ggsave("lm_out.jpg", height = 6, width = 7.5)
+
+# reporting using stargazer
+# https://www.jakeruss.com/cheatsheets/stargazer/
+library(stargazer)
+stargazer(final_reg, type = "text",ci = TRUE, ci.level = 0.95, ci.separator = "; ")
+
+# Standardized coefficients
+
+library(lm.beta)
+lm.beta(final_reg)
+# The same can be achieved using the scale function on the variables in the regression equation
+
+multiple_regression_std <- lm(scale(sales) ~ scale(adspend) + scale(airplay) + scale(starpower), data = regression) #estimate linear model
+summary(multiple_regression_std) #summary of results
+
+# Plot of model fit (predicted vs. observed values)
+
+dat$yhat <- predict(final_reg)
+
+ggplot(dat,aes(x = yhat, y = meat_con)) +  
+  geom_point(size=2,shape=1) +  #Use hollow circles
+  scale_x_continuous(name="predicted values") +
+  scale_y_continuous(name="observed values") +
+  geom_abline(intercept = 0, slope = 1) +
+  theme_bw()
+# Plot model fit for bivariate model (predicted vs. observed values)
+
+regression$yhat_1 <- predict(simple_regression)
+
+ggplot(regression,aes(x = yhat_1, y = sales)) +  
+  geom_point(size=2,shape=1) +  #Use hollow circles
+  scale_x_continuous(name="predicted values") +
+  scale_y_continuous(name="observed values") +
+  geom_abline(intercept = 0, slope = 1) +
+  theme_bw()
+
+# Added variable plots
+
+library(car)
+avPlots(reg5)
+
+# Using the model for making predictions
+
+summary(multiple_regression)$coefficients[1,1] + 
+  summary(multiple_regression)$coefficients[2,1]*800 + 
+  summary(multiple_regression)$coefficients[3,1]*30 + 
+  summary(multiple_regression)$coefficients[4,1]*5
+
+#-------------------------------------------------------------------#
+#-------------------------Potential problems------------------------#####
+#-------------------------------------------------------------------#
+
+# Outliers
+new <- data.frame()
+new$stud_resid <- rstudent(final_reg)
+head(dat)
+
+plot(1:nrow(dat),dat$stud_resid, ylim=c(-3.3,3.3)) #create scatterplot 
+abline(h=c(-3,3),col="red",lty=2) #add reference lines
+
+outliers <- subset(dat,abs(stud_resid)>3)
+outliers
+
+
+
+# Influencial observations
+
+plot(final_reg,4)
+plot(final_reg,5)
+
+# Linear specification
+
+avPlots(final_reg)
+
+# Constant error variance (homoscedasticity)
+plot(final_reg, 1)
+# Breusch-Pagan Test
+library(lmtest)
+bptest(final_reg)
+# If test is significant, transform the data, or use robust SE's:
+library(sandwich)
+coeftest(final_reg, vcov = vcovHC(final_reg))
+
+# Normal distribution of residuals
+plot(final_reg,2)
+shapiro.test(resid(final_reg))
+# If the residuals do not follow a normal distribution, transform the data or use bootstrapping
+library(boot)
+# function to obtain dat coefficients
+bs <- function(formula, data, indices) {
+  d <- data[indices,] # allows boot to select sample
+  fit <- lm(formula, data=d)
+  return(coef(fit))
+}
+# bootstrapping with 1000 replications
+boot_out <- boot(data=dat, statistic=bs, R=6000, formula = meat_con ~ ei_ind + ident_pro + ident_sal + ident_com + 
+                   meat_know + meat_norm + nep_single15 + sex + age + isced + 
+                   income_hh)
+# view results
+summary(boot_out)
+plot(boot_out, index=1) # intercept
+plot(boot_out, index=2) # adspend
+plot(boot_out, index=3) # airplay
+plot(boot_out, index=3) # starpower
+# get 95% confidence intervals
+boot.ci(boot_out, type="bca", index=1) # intercept
+boot.ci(boot_out, type="bca", index=2) # adspend
+boot.ci(boot_out, type="bca", index=3) # airplay
+boot.ci(boot_out, type="bca", index=4) # starpower
+
+# Multicollinearity
+
+library(Hmisc)
+rcorr(as.matrix(dat[,c("adspend","airplay","starpower")]))
+plot(dat[,c("adspend","airplay","starpower")])
+
+# alternatively...
+library(ggstatsplot)
+ggcorrmat(
+  data = dat[,c("adspend","airplay","starpower")],
+  matrix.type = "lower", # type of visualization matrix
+  colors = c("darkgrey", "white", "steelblue"),
+  title = "Correlalogram of independent variables")
+
+# compute variance inflation factors
+vif(final_reg)
+
+#-------------------------------------------------------------------#
+#----------------------Out-of-sample prediction---------------------#
+#-------------------------------------------------------------------#
+
+# randomly split into training and test data:
+set.seed(123)
+n <- nrow(dat)
+train <- sample(1:n,round(n*2/3))
+test <- (1:n)[-train]
+
+# estimate linear model based on training data
+multiple_train <- lm(meat_con ~ ei_ind + ident_pro + ident_sal + ident_com + 
+                       meat_know + meat_norm + nep_single15 + sex + age + isced + 
+                       income_hh, data = dat, subset=train)
+summary(multiple_train) #summary of results
+
+# using coefficients to predict test data
+pred_lm <- predict(multiple_train,newdata = dat[test,])
+cor(dat[test,"meat_con"],pred_lm, use = "complete.obs")^2 # R^2 for test data
+
+# plot predicted vs. observed values for test data
+plot(dat[test,"meat_con"],pred_lm,xlab="y measured",ylab="y predicted",cex.lab=1.3)
+abline(c(0,1))
+
+#-------------------------------------------------------------------#
+#-------------------------Variable selection------------------------#####
+#-------------------------------------------------------------------#
+
+set.seed(123)
+# Add another random variable
+dat$var_test <- rnorm(nrow(dat),0,1)
+
+# Model comparison with anova
+lm0 <- lm(sales ~ 1, data = dat) 
+lm1 <- lm(sales ~ adspend, data = dat) 
+lm2 <- lm(sales ~ adspend + airplay, data = dat) 
+lm3 <- lm(sales ~ adspend + airplay + starpower, data = dat) 
+lm4 <- lm(sales ~ adspend + airplay + starpower + var_test, data = dat) 
+anova(lm0, lm1, lm2, lm3, lm4)
+
+# Stepwise variable selection
+# Automatic model selection with step
+model_lmstep <- step(lm4)
+model_lmstep
+
+# Comparison of the models
+
+
+# reporting using stargazer
+stargazer(reg1, reg2, reg3, reg5, type = "text",ci = TRUE, ci.level = 0.95, ci.separator = "; ")
+
+
+
+
+stargazer(reg1,reg2,reg3)
+
+
