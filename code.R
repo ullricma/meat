@@ -1,3 +1,5 @@
+# !diagnostics suppress=<job>
+# !diagnostics off
 #================================================#
 # Preparing the R Session ####
 #================================================#
@@ -12,6 +14,15 @@
 
 library(haven)
 library(dplyr)
+library(tidyr)
+library(janitor)
+library(kableExtra)
+library(knitr)
+library(ggplot2)
+library(ggstatsplot)
+
+library(extrafont)
+
 
 options(digits = 2)
 options(max.print = 100)
@@ -351,6 +362,53 @@ dat[, q17ident_rec] <- lapply(dat[, q17ident_rec], function(i)
   ifelse(i == 4, 2,
   ifelse(i == 5, 1, NA))))))
 
+
+#--------------------------------------------------#
+# creating descriptives                             
+#--------------------------------------------------#
+
+q17ident
+library(tikzDevice)
+
+# create the labels
+labels <- c("Einklang (1)", "Verbunden (2)", "Besorgt (3)", "Beschuetzend (4)", "Unterlegen (5)", 
+            "Leidenschaftlich (6)", "Respektvoll (7)", "Abhaengig (8)", 
+            "Fuersprecher (9)", "Bewahrer (10)", "Wehmuetig (11)")
+
+
+# now calculate the means and the labels
+std <- function(x) sd(x)/sqrt(length(x))
+
+eichart <- dat %>% 
+  select(q17ident) %>%
+  drop_na(q17ident) %>% 
+  summarise_at(.vars = q17ident,
+               .funs = mean, na.rm = TRUE) %>% 
+  gather(q17ident) %>%
+  ggplot(aes(x = q17ident, y = as.numeric(value))) + 
+  geom_point() + 
+  geom_line(group = 1) + 
+  coord_flip() + 
+  geom_text(aes(label=round(value,1)),hjust=-0.7, vjust=1) +
+  scale_x_discrete(name="Umweltidentität\n", labels = eval(labels))  +
+  scale_y_continuous(name="Mittelwert", limits = c(1,5)) +
+  theme(text = element_text(size = 11)) + 
+  theme_light()
+  #theme(text = element_text(size=16, family="CM Roman"))
+
+#loadfonts()
+pdf(paste0(latexpath,"descriptives/eichart.pdf"), height=6, width=6, family = "CM Roman")
+print(eichart)
+dev.off()
+
+# working with different fonts in R Plots see
+#https://github.com/wch/fontcm
+
+# tikz(file = paste0(latexpath,"descriptives/eichart.tex"),width=3.5, height=3)
+# eichart
+# dev.off()
+
+
 #--------------------------------------------------#
 # PCA (Environmental Identity)                             
 #--------------------------------------------------#
@@ -368,7 +426,11 @@ correlations <- as.data.frame(raq_matrix)
 # Correlation plot
 
 library(psych)
-corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations between variables")
+pdf(paste0(latexpath,"descriptives/eicors.pdf"), family = "CM Roman")
+corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE)
+dev.off()
+
+system2('open', args = paste0(latexpath,"descriptives/eicors.pdf"))
 # Check number of low correlations adn mean correlaiton per variable
 
 diag(correlations) <- NA #set diagonal elements to missing
@@ -1099,7 +1161,7 @@ pc3c
 print.psych(pc3c, cut = 0.3)
 
 # Orthogonal factor rotation 
-pc3b <- principal(dat[,q15d], nfactors = 2, rotate = "oblimin")
+pc3b <- principal(dat[,q15d], nfactors = 2, rotate = "oblimin", scores = TRUE, missing = TRUE)
 pc3b
 print.psych(pc3b, cut = 0.3)
 
@@ -1187,8 +1249,6 @@ dat <- cbind(dat, pc4b$scores)
 dat <- dat %>% rename("nep_single15" = "PC1")
 
 dat %>% select(q15d) %>% summarise_all(funs(sum(is.na(.))))
-
-View(dat %>% select(q15d))
 
 # Factor-Based Scores (Summed up and standardized to 1-10)
 # excluding item 6 to keep things consistent (Might need to reverse this, depending on how I proceed)
@@ -1331,11 +1391,8 @@ dat <- dat %>% mutate(meat_know = ifelse(ceas108a == 1, 1,
 
 dat <- dat %>% mutate(meat_know2 = ifelse(ceas108a == 7, NA, ceas108a))
 
-library(janitor)
+
 dat %>% group_by(ceas108a, meat_con) %>% summarise(n = n()) %>% spread(ceas108a, n) %>% janitor::adorn_percentages()*100
-
-
-View(dat %>% filter(meat_con == 1) %>% select(ceas108a, ceas109a, ceas107a, ceas110a:ceas113a))
 
 
 dat %>% drop_na(ceas108a) %>% 
@@ -1346,11 +1403,11 @@ dat %>% drop_na(ceas108a) %>%
   adorn_totals(where = "col") %>% 
   adorn_percentages() %>% 
   adorn_pct_formatting(digits = 0) %>% 
-  adorn_title(col_name = "Treibhausgas Fleisch (rank)", row_name = "Fleischkonsum", placement = "combined") %>% 
-  kable(format = "latex", booktabs = TRUE, caption = "Antwortverhalten für die Fragen Eingeschätzter Fleischkonsum und Einschätzung des Treibhausgasausstoßes von Fleisch", label = "meat_know") %>%
-  save_kable(paste0(latexpath, "appendix/meat_know"), keep_tex = TRUE) %>% 
-  as_image(file = paste0(latexpath, "appendix/meat_know.png"))
-
+  adorn_title(col_name = "Treibhausgasausstoß Fleisch (Rang)", row_name = "Fleischkonsum", placement = "combined") %>% 
+  kable(format = "latex", booktabs = TRUE, caption = "Antwortverhalten für die Fragen Eingeschätzter Fleischkonsum und Einschätzung des Treibhausgasausstoßes von Fleisch", label = "gra_meat_know") %>%
+  save_kable(paste0(latexpath, "appendix/meat_know"), keep_tex = TRUE) #%>% 
+  #as_image(file = paste0(latexpath, "appendix/meat_know.png"))
+setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 
 
 
@@ -1497,6 +1554,14 @@ dat$age <- 2020-dat$a11d056b
 
 ### Step 1: harmonize the income categories 
 
+# household income
+#dat$a11d097c
+#dat$cfzh090c
+
+# personal income
+#dat$a11d096b
+#dat$cfzh089b
+
 # househould income
 
 # recoding the initial household income, so that the categories match with the most recent version
@@ -1511,21 +1576,7 @@ dat <- dat %>%
                     ifelse(a11d097c %in% c(13), 8,
                     ifelse(a11d097c %in% c(14), 9, a11d097c))))))))))
 
-#dat$a11d097c
-#dat$cfzh090c
-table(dat$a11d097c, useNA = "ifany")
-table(dat$cfzh090c, useNA = "ifany")
 
-
-# personal income
-#dat$a11d096b
-#dat$cfzh089b
-
-table(dat$a11d096b, useNA = "ifany")
-table(dat$cfzh089b, useNA = "ifany")
-# Joint household
-#dat$a11d081a
-#dat$cfzh077a
 
 # setting 98 to NA, because we can´t get any information from it
 vars <- c("a11d097c", "cfzh090c", "a11d096b", "cfzh089b")
@@ -1534,14 +1585,24 @@ dat[,vars] <- lapply(dat[,vars], function(x) ifelse(x == 98, NA, x))
 #dat %>% select(a11d097c, a11d096b, cfzh090c, cfzh089b, income_hh, income_p)
 
 ### step2: combine the income data (if there is none for 2015, use the one from the initial interview)
+# how many cases are going to be affected by this? 
+
+table(dat$cfzh090c, useNA = "ifany") # household income = 480 NAs
+table(dat$cfzh089b, useNA = "ifany") # personal income = 242 NAs
 
 dat$income_hh <- with(dat, ifelse(is.na(cfzh090c), a11d097c, cfzh090c))
 dat$income_p <- with(dat, ifelse(is.na(cfzh089b), a11d096b, cfzh089b))
 
-### step3: deal with cases that don´t have a own personal income
+# after filling in the NAs from the initial interview
+table(dat$income_hh, useNA = "ifany") # household income = 227 NAs
+table(dat$income_p, useNA = "ifany") # personal income = 53 NAs
+
+
+### step3: deal with cases that don´t have a own personal income or not information for household income
 
 # first let´s filter out people who have no information provided for either income
 # convert househould categories to private income categories as close as possible
+# logic behind this: household income divided by 2, assuming that most adults share it with a partner
 
 dat <- dat %>% mutate(income_p = ifelse(income_p == 97 & income_hh == 1, 2,
                                  ifelse(income_p == 97 & income_hh == 2, 3,
@@ -1554,11 +1615,26 @@ dat <- dat %>% mutate(income_p = ifelse(income_p == 97 & income_hh == 1, 2,
                                  ifelse(income_p == 97 & income_hh == 9, 13,
                                  ifelse(income_p == 97 & is.na(income_hh), NA, income_p)))))))))))
 
-table(dat$income_p, useNA = "ifany")
-table(dat$income_hh, useNA = "ifany")
+table(dat$income_p, useNA = "ifany") # 96 NAs
+table(dat$income_hh, useNA = "ifany") # 227 NAs
 
-dat %>% select(income_p, income_hh)
+# now let´s create a household income variable for cases we have no information
+# on household income, but on personal income. We can use the conversion from above
 
+dat %>% select(income_hh, income_p) %>%  filter(is.na(income_hh) & !is.na(income_p)) 
+
+dat <- dat %>% mutate(income_hh = ifelse(is.na(income_hh) & income_p %in% c(1,2), 1,
+                                 ifelse(is.na(income_hh) & income_p == 3, 2,
+                                 ifelse(is.na(income_hh) & income_p == 4, 3,
+                                 ifelse(is.na(income_hh) & income_p %in% c(5,6), 4,
+                                 ifelse(is.na(income_hh) & income_p %in% c(7,8), 5,
+                                 ifelse(is.na(income_hh) & income_p == 9, 6,
+                                 ifelse(is.na(income_hh) & income_p %in% c(10,11), 7,
+                                 ifelse(is.na(income_hh) & income_p == 12, 8,
+                                 ifelse(is.na(income_hh) & income_p == 13, 9, income_hh))))))))))
+
+# now let´s check the Nas again
+table(dat$income_hh, useNA = "ifany") # household income_NAs: 96
 
 #--------------------------------------------------#
 # Highest educational degree (ISCED 1997)                             
@@ -1732,11 +1808,8 @@ vars <- c("ei_single","ei_fac1","ei_fac2","ident_sal","ident_pro","ident_com",
           "lm_bio","strom_öko","ekw","envorga","age","sex","income_p", "income_hh", "isced", "edu", "job")
 
 vars <- c("ei_ind","ident_sal","ident_pro","ident_com",
-          "nep_single15", "meat_con","meat_concat", "meat_know", "meat_norm","age","sex","income_p","income_hh", "isced")
+          "nep_single15", "meat_con","meat_concat", "meat_know", "meat_norm","age","sex","income_hh", "isced")
 
-
-library(knitr)
-library(kableExtra)
 
 #dt <- mtcars[1:5, 1:6]
 #kable(dt, "latex", booktabs = T) 
@@ -1768,6 +1841,13 @@ rownames(tmp) <- c("Environmental Identity (Index)",
 # kable(tmp, "latex", booktabs = T, caption = "Überblick der Variablen") %>% as_image(file = "./test1.png")
 # plot(magick::image_read("./test1.png"))
 
+
+# ALTERNATIVE
+# https://cran.r-project.org/web/packages/summarytools/vignettes/Recommendations-rmarkdown.html
+# I probably have to do this in Markdown to make it work in Latex later on
+# https://stackoverflow.com/questions/54215544/r-generate-pretty-plot-by-dfsummary/54758279#54758279
+library(summarytools)
+view(dfSummary(dat[,c("meat_con","ei_ind")]))
 
 
 #================================================#
@@ -1825,10 +1905,6 @@ test <- xtable::xtable(corstarsl(dat[,vars]))
 #================================================#
 # Crosstabs ####
 #================================================#
-
-library(janitor)
-
-dat %>% tabyl(ceas108a, ei_single, show_missing_levels = FALSE) 
 
 
 dat %>% group_by(meat_con,ceas108a) %>% 
@@ -1927,11 +2003,7 @@ dat %>%
 # Graphical Illustrations ####
 #================================================#
 
-plot(jitter(dat$meat_concat, jitter(0.6)), jitter(dat$ident_pro))
 
-
-library(ggplot2)
-library(ggstatsplot)
 
 # ggplot(dat, mapping = aes(ei_single, meat_concat)) + 
 #   geom_point(shape = 1) +
@@ -2000,32 +2072,32 @@ library(ggstatsplot)
 # )
 
 
-ggstatsplot::grouped_ggbetweenstats(
-  data = dat,
-  x = meat_concat,
-  y = ei_ind,
-  grouping.var = meat_know,
-  conf.level = 0.99
-)
-
-
-dat %>%
-  ggplot(aes(fill=meat_know, y=ei_ind, x=factor(meat_concat))) + 
-  geom_violin(position="dodge", alpha=0.5, outlier.colour="transparent") +
-  scale_fill_viridis(discrete=T, name="") +
-  theme_ipsum()  +
-  xlab("") +
-  ylab("Tip (%)") +
-  ylim(0,40)
-
-
-
-ggplot(dat, aes(fill=meat_know, y=ei_ind, x=factor(meat_concat))) + 
-  geom_boxplot()
-
-
-ggplot(dat %>% drop_na(meat_know), aes(fill=meat_know, y=ident_pro, x=factor(meat_con))) + 
-  geom_boxplot()
+# ggstatsplot::grouped_ggbetweenstats(
+#   data = dat,
+#   x = meat_concat,
+#   y = ei_ind,
+#   grouping.var = meat_know,
+#   conf.level = 0.99
+# )
+# 
+# 
+# dat %>%
+#   ggplot(aes(fill=meat_know, y=ei_ind, x=factor(meat_concat))) + 
+#   geom_violin(position="dodge", alpha=0.5, outlier.colour="transparent") +
+#   scale_fill_viridis(discrete=T, name="") +
+#   theme_ipsum()  +
+#   xlab("") +
+#   ylab("Tip (%)") +
+#   ylim(0,40)
+# 
+# 
+# 
+# ggplot(dat, aes(fill=meat_know, y=ei_ind, x=factor(meat_concat))) + 
+#   geom_boxplot()
+# 
+# 
+# ggplot(dat %>% drop_na(meat_know), aes(fill=meat_know, y=ident_pro, x=factor(meat_con))) + 
+#   geom_boxplot()
 
 
   
@@ -2059,14 +2131,7 @@ head(df2)
 
 
 
-dat %>% 
-  tidyr::drop_na(c("ident_pro_rec2","meat_know")) %>% 
-  group_by(ident_pro_rec2, meat_know) %>% 
-  summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% arrange(ident_pro_rec2) %>% 
-  ggplot(aes(x=factor(ident_pro_rec2), y=meat_con, group=meat_know, color=meat_know)) + 
-  geom_line() + 
-  geom_point() +
-  geom_smooth(method = "lm", alpha = 0.1)
+
 
 
 
@@ -2087,7 +2152,7 @@ backup <- dat
 
 dat$meat_know <- factor(dat$meat_know, levels = c(0:1), labels = c("don´t know", "know"))
 dat$sex <- factor(dat$sex, levels = c(0:1), labels = c("männlich", "weiblich"))
-dat$meat_pop_more <- factor(dat$meat_pop_more, levels = c(0:1), labels = c("Bev_weniger", "Bev_mehr"))
+#dat$meat_pop_more <- as.factor(dat$meat_pop_more, levels = c(0:1), labels = c("Bev_weniger", "Bev_mehr"))
 
 
 
@@ -2096,6 +2161,9 @@ table(dat$meat_norm, dat$meat_con, deparse.level = 2)
 #================================================#
 # REGRESSION ####
 #================================================#
+library(car)
+library(lm.beta)
+library(stargazer)
 
 
 ### Recoding work
@@ -2112,11 +2180,10 @@ dat <- dat %>% mutate(ident_pro_rec2 = ifelse(ident_pro >= 4.2, 4,
 dat$ident_pro_rec2 <- factor(dat$ident_pro_rec2, levels = c(1:4), labels = c("sehr niedrig", "niedrig", "hoch", "sehr hoch"))
 
 dat <- dat %>% mutate(ident_pro_rec = ifelse(ident_pro <= mean(ident_pro, na.rm = T), 0,
-                                             ifelse(ident_pro > mean(ident_pro, na.rm = T), 1, NA)))
+                                      ifelse(ident_pro > mean(ident_pro, na.rm = T), 1, NA)))
 
 dat$ident_pro_rec <- factor(dat$ident_pro_rec, levels = c(0:1), labels = c("lower", "higher"))
 
-library(tidyr)
 ### graphics
 dat %>% 
   filter(!is.na(meat_know)) %>% 
@@ -2127,17 +2194,27 @@ dat %>%
 dat %>% group_by(meat_con) %>% summarise(mean(ident_pro, na.rm= TRUE))
 
 
+
+
+
+
 #--------------------------------------------------#
 # Model 1: Identity 
 #--------------------------------------------------#
 
-reg1 <- lm(meat_concat ~ ei_ind , data = dat)
+reg1 <- lm(meat_con ~ ei_ind , data = dat)
 summary(reg1)
 
 dat %>% 
   group_by(ei_ind) %>% 
   summarise(meat_con = mean(meat_concat, na.rm = TRUE)) %>% 
   ggplot(aes(x = ei_ind, y = meat_con)) + geom_point() + geom_smooth(method = "lm")
+
+
+dat %>% 
+  group_by(nep_ind15) %>% 
+  summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% 
+  ggplot(aes(x = nep_ind15, y = meat_con)) + geom_point() + geom_smooth(method = "lm")
 
 plot(reg1, 1)
 plot(reg1, 2)
@@ -2149,7 +2226,7 @@ plot(reg1, 4)
 #--------------------------------------------------#
 # Model 2: Identity + Identity Prominence
 #--------------------------------------------------#
-reg2<-update(reg1, .~. + ident_pro)
+reg2<-update(reg1, .~. + ident_pro + ident_sal + ident_com)
 summary(reg2)
 
 
@@ -2160,20 +2237,11 @@ dat %>%
   ggplot(aes(x = ei_ind, y = meat_con, group = ident_pro_rec2, color = ident_pro_rec2)) + geom_point() + geom_line()
 
 
-reg3<-update(reg2, .~. + ident_sal + ident_com)
-summary(reg3)
-plot(reg3)
-
-
-
-
-
-
 
 #--------------------------------------------------#
 # Model 2: Socials
 #--------------------------------------------------#
-reg4 <- update(reg3, .~.  + meat_know + meat_norm)
+reg4 <- update(reg2, .~.  + meat_know + meat_norm + nep_ind)
 summary(reg4)
 
 dat %>% 
@@ -2203,17 +2271,70 @@ dat %>%
 #summary(reg4)
 
 # Model 5:
-reg5 <- update(reg4, .~. + nep_single15 + sex + age + isced + income_hh)
+reg5 <- update(reg4, .~.  + sex + age + isced + income_hh)
 summary(reg5)
+lm.beta::lm.beta(reg5)
+
+reg5_int <- update(reg5, .~. + ident_pro:meat_know)
+summary(reg5_int)
+lm.beta::lm.beta(reg5_int)
+
+stargazer(reg1, reg2, reg4, reg5, reg5_int, type = "text", single.row = TRUE, omit.stat=c("LL","ser","f"))
 
 
 
 
-
-
-reg6 <- update(reg5, .~. + ident_pro:meat_know)
+reg6 <- update(reg4, .~. + nep_ind15 + sex + age + isced + income_hh)
 summary(reg6)
+
+
+
+#--------------------------------------------------#
+# Model 6 Interaction                             
+#--------------------------------------------------#
+
+
+
+reg7 <- update(reg5, .~. + ident_pro:meat_know)
+summary(reg7)
 lm.beta::lm.beta(reg6)
+
+
+stargazer(reg5, reg5_int, type = "text", single.row = TRUE, omit.stat=c("LL","ser","f"))
+
+dat %>% 
+  tidyr::drop_na(c("ident_pro_rec2","meat_know")) %>% 
+  group_by(ident_pro_rec2, meat_know) %>% 
+  summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% arrange(ident_pro_rec2) %>% 
+  ggplot(aes(x=factor(ident_pro_rec2), y=meat_con, group=meat_know, color=meat_know)) + 
+  geom_point() +
+  geom_smooth(method = "lm", alpha = 0.1)
+
+dat %>% 
+  tidyr::drop_na(c("ident_pro","meat_know")) %>% 
+  group_by(ident_pro, meat_know) %>% 
+  summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% arrange(ident_pro) %>% 
+  ggplot(aes(x=factor(ident_pro), y=meat_con, group=meat_know, color=meat_know)) + 
+  geom_point() +
+  geom_smooth(method = "lm", alpha = 0.1)
+
+
+
+
+
+library(interplot)
+interplot(m = reg7, var1 = "ident_pro", var2 = "meat_know")
+
+library(emmeans)
+emtrends(reg7, ~ meat_know, var="ident_pro")
+emtrends(reg7, pairwise ~ meat_know, var="ident_pro")
+
+(mylist <- list(ident_pro=seq(1,5,by=0.25),meat_know=c("don´t know","know")))
+emmip(reg7, meat_know ~ ident_pro, at=mylist, CIs=TRUE) + 
+  labs(x = "Wichtigkeit der Umweltidentität", y = "Fleischkonsum")
+
+
+
 
 1/vif(reg5)
 mean(vif(reg5))
@@ -2227,8 +2348,7 @@ final_reg <- reg5
 
 # Multicollinearity
 
-library(Hmisc)
-library(car)
+
 rcorr(as.matrix(regression[,c("adspend","airplay","starpower")]))
 plot(regression[,c("adspend","airplay","starpower")])
 
@@ -2245,7 +2365,6 @@ ggcorrmat(
 
 
 # alternatively...
-library(ggstatsplot)
 ggcorrmat(
   data = regression[,c("adspend","airplay","starpower")],
   matrix.type = "upper", # type of visualization matrix
@@ -2303,7 +2422,6 @@ ggplot(regression, mapping = aes(adspend, sales)) +
   theme_bw()
 
 # Alternatively, using ggstatsplot
-library(ggstatsplot)
 scatterplot <- ggscatterstats(
   data = regression,
   x = adspend,
@@ -2342,7 +2460,7 @@ ggsave("lm_out.jpg", height = 6, width = 7.5)
 
 # reporting using stargazer
 # https://www.jakeruss.com/cheatsheets/stargazer/
-library(stargazer)
+
 stargazer(final_reg, type = "text",ci = TRUE, ci.level = 0.95, ci.separator = "; ")
 
 # Standardized coefficients
