@@ -12,6 +12,8 @@
 # Loading Packages ####
 #================================================#
 
+
+
 library(haven)
 library(dplyr)
 library(tidyr)
@@ -31,6 +33,7 @@ options(max.print = 100)
 #--------------------------------------------------#
 # Defining Latex working path for graphics
 #--------------------------------------------------#
+setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 latexpath <- "C:/Users/Ulli/Desktop/Thesis/thesis_small/graphics/"
 
 #================================================#
@@ -267,7 +270,7 @@ q17ident <- c(
 "eabk091a") # Selbsteinschätzung: Wehmütig bezüglich Umwelt #
 
 q17pro <- c(
-"eabk092a", # Zustimmung: Kauf Öko-Produkte Teil des 
+"eabk092a", # Zustimmung: Kauf Öko-Produkte Teil des Lebensstils
 "eabk093a", # Zustimmung: Lege keinen Wert auf Öko-Produkte 
 "eabk094a", # Zustimmung: Konsument hat soziale Verantwortung 
 "eabk095a" # Zustimmung: Kauf Öko-Produkte zeigt soziale Verantwortung
@@ -371,9 +374,15 @@ q17ident
 library(tikzDevice)
 
 # create the labels
-labels <- c("Einklang (1)", "Verbunden (2)", "Besorgt (3)", "Beschuetzend (4)", "Unterlegen (5)", 
-            "Leidenschaftlich (6)", "Respektvoll (7)", "Abhaengig (8)", 
-            "Fuersprecher (9)", "Bewahrer (10)", "Wehmuetig (11)")
+labels <- c("Einklang (1)", "Verbunden (2)", "Besorgt (3)", "Beschützend (4)", "Unterlegen (5)", 
+            "Leidenschaftlich (6)", "Respektvoll (7)", "Abhängig (8)", 
+            "Fürsprecher (9)", "Bewahrer (10)", "Wehmütig (11)")
+
+
+
+#--------------------------------------------------#
+# Creating a graph for the means of the environmental identity                             
+#--------------------------------------------------#
 
 
 # now calculate the means and the labels
@@ -410,10 +419,14 @@ dev.off()
 
 
 #--------------------------------------------------#
-# PCA (Environmental Identity)                             
+# PCA (Environmental Identity) -  2 factors                            
 #--------------------------------------------------#
 
-### STEP 1
+
+#--------------------------------------------------#
+# Step 1                             
+#--------------------------------------------------#
+
 
 # Inspect correlation matrix
 
@@ -427,7 +440,7 @@ correlations <- as.data.frame(raq_matrix)
 
 library(psych)
 pdf(paste0(latexpath,"descriptives/eicors.pdf"), family = "CM Roman")
-corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE)
+corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE, labels = eval(labels))
 dev.off()
 
 system2('open', args = paste0(latexpath,"descriptives/eicors.pdf"))
@@ -437,10 +450,11 @@ diag(correlations) <- NA #set diagonal elements to missing
 apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correlations for each variable
 apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
 # Conduct Bartlett's test (p should be < 0.05)
-
+ 
 # I see that item eabk085 has very low correlations with all the other variables, so I decide to delete them
 # for the further analysis and repeat the steps aboce
-q17ident <- q17ident[!(q17ident %in% c("eabk085a","eabk084a"))]
+#q17ident <- q17ident[!(q17ident %in% c("eabk085a","eabk084a"))]
+q17ident <- q17ident[!(q17ident %in% c("eabk085a"))]
 
 raq_matrix <- cor(dat[,q17ident], use="complete.obs") #create matrix
 round(raq_matrix,3)
@@ -474,7 +488,9 @@ KMO(dat[,q17ident])
 # we delete the fifth item due to very low correlation with all the other variables
 
 
-### STEP 2
+#--------------------------------------------------#
+# Step 2                            
+#--------------------------------------------------#
 
 # Deriving factors
 
@@ -516,20 +532,24 @@ qqnorm(residuals)
 qqline(residuals)
 shapiro.test(residuals)
 
-### STEP 3
+#--------------------------------------------------#
+# Step 3                             
+#--------------------------------------------------#
 
 # Oblique factor rotation (oblimin), because there is high correlation assumed
 pc3 <- principal(dat[,q17ident], nfactors = 2, rotate = "oblimin", scores = TRUE)
 print.psych(pc3, cut = 0.3, sort = TRUE)
 
+
+#plot(magick::image_read("C:/Users/Ulli/Desktop/Thesis/thesis_small/graphics/descriptives/meat_know.png"))
+
+
+kable(print.psych(pc3, cut = 0.3, sort = TRUE), )
+
 # see: http://hosted.jalt.org/test/PDF/Brown31.pdf
 # Interpretation of Factor Analysis tutorial: https://data.library.virginia.edu/getting-started-with-factor-analysis/
 
 
-
-#--------------------------------------------------#
-# headline2                             
-#--------------------------------------------------#
 # I will create two Factors now, first the factor with the two separate levels, second the factor with one combined level
 q17ident_pca_1 <- q17ident[c(3:9)]
 q17ident_pca_2 <- q17ident[c(1:2)]
@@ -539,7 +559,55 @@ dat <- cbind(dat, pc3$scores)
 dat <- dat %>% rename("ei_fac1" = "TC1",
                       "ei_fac2" = "TC2")
 
+#--------------------------------------------------#
+# Reliability Analysis                            
+#--------------------------------------------------#
+identity1 <- dat[,q17ident_pca_1]
+identity2 <- dat[,q17ident_pca_2]
+identity1_rel <- psych::alpha(identity1)
+identity2_rel <- psych::alpha(identity2)
 
+
+#--------------------------------------------------#
+# Creating the Latex Table                             
+#--------------------------------------------------#
+
+# creating a summary table in kable
+# step 1: create the data frame with the loadings
+eipca <- as.data.frame(unclass(pc3$loadings))
+# cut out everything below 0.3
+# eipca[ eipca < 0.3 ] <- ""
+
+
+# step 2: extract the relevant other informations
+# first: variance explained
+var <- pc3$Vaccounted[4,]*100
+
+#second: Eigenvalues
+eig <- pc3$Vaccounted[1,]
+
+# third: reliability analysis
+rel1 <- identity1_rel$total[2]
+rel2 <- identity2_rel$total[2]
+
+# step 3: combine all in a data frame
+eipca[nrow(eipca) + 1,] <- var
+eipca[nrow(eipca) + 1,] <- eig
+eipca[nrow(eipca) + 1,] <- c(rel1,rel2)
+
+
+rownames(eipca) <- c(labels[-5],"Erklärte Varianz in %","Eigenwert","Alpha")
+colnames(eipca) <- c("Faktor1","Faktor2")
+
+kable(eipca, format = "latex", booktabs = TRUE, digits = 2) %>% 
+  row_spec(10, hline_after = T) %>% 
+  save_kable(paste0(latexpath, "appendix/eipca"), keep_tex = TRUE)
+setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
+
+
+#================================================#
+# IV: Environmental Identity (Single Item) ####
+#================================================#
 
 
 # here I take the factors into one single variable
@@ -578,82 +646,56 @@ dat <- dat %>% mutate(ei_ind = ifelse(ei_nas > round(length(q17ident)/2), NA,
 # normalizing the mean to a 1-10 Scale
 # dat$ei_ind  <- dat$ei_ind/max(dat$ei_ind, na.rm = TRUE)*10
 
-
-
-hist(dat$ei_index)
-mean(dat$ei_index, na.rm = TRUE)
-sd(dat$ei_index, na.rm = TRUE)
-
-min(dat$ei_sum)
-max(dat$ei_sum)
-
-
 # make a plausibility check
 
 dat %>% select(all_of(q17ident), ei_sum, ei_nas, ei_ind)
 
 
-#--------------------------------------------------#
-# Reliability Analysis                            
-#--------------------------------------------------#
-identity1 <- dat[,q17ident_pca_1]
-identity2 <- dat[,q17ident_pca_2]
-psych::alpha(identity1)
-psych::alpha(identity2)
-
-
 identity_single <- dat[,q17ident]
-psych::alpha(identity_single)
+identitysingle_rel <- psych::alpha(identity_single)
+
+#--------------------------------------------------#
+# Creating the Latex Table                             
+#--------------------------------------------------#
+
+# creating a summary table in kable
+# step 1: create the data frame with the loadings
+eipca_single <- as.data.frame(unclass(pc4$loadings))
+# cut out everything below 0.3
+# eipca[ eipca < 0.3 ] <- ""
 
 
-dat %>% group_by(meat_con) %>% summarise_at(.vars = q17ident,
-                                            .funs = mean, na.rm = TRUE)
+# step 2: extract the relevant other informations
+# first: variance explained
+var <- pc4$Vaccounted[2,]*100
+
+#second: Eigenvalues
+eig <- pc4$Vaccounted[1,]
+
+# third: reliability analysis
+rel1 <- identitysingle_rel$total[2]
 
 
+# step 3: combine all in a data frame
+eipca_single[nrow(eipca_single) + 1,] <- var
+eipca_single[nrow(eipca_single) + 1,] <- eig
+eipca_single[nrow(eipca_single) + 1,] <- rel1
 
 
-# #--------------------------------------------------#
-# # Another Factor Analysis approach                             
-# #--------------------------------------------------#
-# q17ident_pca <- q17ident[c(1,2,3,4,6,7,10,11)]
-# 
-# pc5 <- principal(dat[,q17ident_pca], nfactors = 1, rotate = "varimax", scores = TRUE)
-# print.psych(pc5, cut = 0.3, sort = TRUE)
-# 
-# # Add factor scores to dataframe 
-# dat <- cbind(dat, pc5$scores)
-# 
-# # for now just let´s name the PC1 as ei for (environmental identity)
-# dat <- dat %>% rename("ei_scores_3" = "PC1")
-# 
-# dat %>% group_by(meat_con) %>% summarise_at(.vars = c("ei_scores_3", "ei_scores_2", "ei_scores"),
-#                                             .funs = mean, na.rm = TRUE)
-# 
-# 
-# ### Creating an index as second approach next to using scores
-# 
-# # Calculate the sum of value of the identity (without the weighting of the scores)
-# dat$ei_sum <- dat %>% select(all_of(q17ident_pca)) %>% 
-#   mutate(ei_sum = rowSums(., na.rm = TRUE)) %>% pull(ei_sum)
-# 
-# # calculate the NAs for all the variables
-# dat$ei_nas <- apply(dat[,q17ident_pca], MARGIN = 1, function(x) sum(is.na(x)))
-# 
-# 
-# dat[,c("ei_sum","ei_nas")]
-# table(dat$ei_nas)
-# 
-# 
-# # if there are more than 50% Nas don´t calculate the mean, otherwise take the average
-# dat <- dat %>% mutate(ei_ind_2 = ifelse(ei_nas > round(length(q17ident_pca)/2), NA, 
-#                                       ifelse(ei_nas == 0, ei_sum/length(q17ident_pca),
-#                                              ifelse(ei_nas !=0, ei_sum/(length(q17ident_pca)-ei_nas),NA))))
+rownames(eipca_single) <- c(labels[-5],"Erklärte Varianz in %","Eigenwert","Alpha")
+colnames(eipca_single) <- c("Umweltidentität")
+
+kable(eipca_single, format = "latex", booktabs = TRUE, digits = 2) %>% 
+  row_spec(10, hline_after = T) %>% 
+  save_kable(paste0(latexpath, "appendix/eipca_single"), keep_tex = TRUE)
+setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
+
+
 
 
 #================================================#
 # IV2: Salience, Prominence und Commitment  ####
 #================================================#
-
 
 #--------------------------------------------------#
 # Reliability Analysis                             
@@ -1402,14 +1444,15 @@ dat %>% drop_na(ceas108a) %>%
   select(-'0') %>% 
   adorn_totals(where = "col") %>% 
   adorn_percentages() %>% 
-  adorn_pct_formatting(digits = 0) %>% 
-  adorn_title(col_name = "Treibhausgasausstoß Fleisch (Rang)", row_name = "Fleischkonsum", placement = "combined") %>% 
-  kable(format = "latex", booktabs = TRUE, caption = "Antwortverhalten für die Fragen Eingeschätzter Fleischkonsum und Einschätzung des Treibhausgasausstoßes von Fleisch", label = "gra_meat_know") %>%
+  adorn_pct_formatting(digits = 0, affix_sign = FALSE) %>% 
+  adorn_title(col_name = linebreak("Treibhausgasausstoß\n Fleisch (Rang)"), row_name = "Fleischkonsum") %>% 
+  kable(format = "latex", booktabs = TRUE, escape = FALSE, 
+        caption = "Antwortverhalten für die Fragen Eingeschätzter Fleischkonsum und Einschätzung des Treibhausgasausstoßes von Fleisch (in %)", 
+        label = "gra_meat_know") %>%
+  column_spec(2:8, width = "0.5cm") %>% 
   save_kable(paste0(latexpath, "appendix/meat_know"), keep_tex = TRUE) #%>% 
   #as_image(file = paste0(latexpath, "appendix/meat_know.png"))
 setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
-
-
 
 
 
@@ -1847,8 +1890,7 @@ rownames(tmp) <- c("Environmental Identity (Index)",
 # I probably have to do this in Markdown to make it work in Latex later on
 # https://stackoverflow.com/questions/54215544/r-generate-pretty-plot-by-dfsummary/54758279#54758279
 library(summarytools)
-view(dfSummary(dat[,c("meat_con","ei_ind")]))
-
+view(dfSummary(dat[,c("ei_ind")]), plain.ascii = FALSE, tmp.img.dir = "/tmp")
 
 #================================================#
 # Correlation Matrix####
@@ -2152,9 +2194,12 @@ backup <- dat
 
 dat$meat_know <- factor(dat$meat_know, levels = c(0:1), labels = c("don´t know", "know"))
 dat$sex <- factor(dat$sex, levels = c(0:1), labels = c("männlich", "weiblich"))
+dat$envorga <- factor(dat$envorga, levels = c(2,1), labels = c("Kein Mitglied", "Mitglied"))
 #dat$meat_pop_more <- as.factor(dat$meat_pop_more, levels = c(0:1), labels = c("Bev_weniger", "Bev_mehr"))
 
-
+# renaming for commitment
+dat <- dat %>% rename("ident_com_qual" = "ident_com",
+                      "ident_com_quant" = "envorga")
 
 
 table(dat$meat_norm, dat$meat_con, deparse.level = 2)
@@ -2195,9 +2240,6 @@ dat %>% group_by(meat_con) %>% summarise(mean(ident_pro, na.rm= TRUE))
 
 
 
-
-
-
 #--------------------------------------------------#
 # Model 1: Identity 
 #--------------------------------------------------#
@@ -2222,11 +2264,10 @@ shapiro.test(resid(reg6))
 plot(reg1, 3)
 plot(reg1, 4)
 
-
 #--------------------------------------------------#
 # Model 2: Identity + Identity Prominence
 #--------------------------------------------------#
-reg2<-update(reg1, .~. + ident_pro + ident_sal + ident_com)
+reg2<-update(reg1, .~. + ident_pro + ident_sal + ident_com_qual + ident_com_quant)
 summary(reg2)
 
 
