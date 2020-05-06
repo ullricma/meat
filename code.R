@@ -440,10 +440,11 @@ correlations <- as.data.frame(raq_matrix)
 
 library(psych)
 pdf(paste0(latexpath,"descriptives/eicors.pdf"), family = "CM Roman")
-corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE, labels = eval(labels))
+corPlot(correlations, numbers=TRUE, upper=FALSE, diag=TRUE, colors = FALSE, zlim = c(0:1), labels = eval(labels))
 dev.off()
 
-system2('open', args = paste0(latexpath,"descriptives/eicors.pdf"))
+# command to open pdf from R
+# system2('open', args = paste0(latexpath,"descriptives/eicors.pdf"))
 # Check number of low correlations adn mean correlaiton per variable
 
 diag(correlations) <- NA #set diagonal elements to missing
@@ -465,7 +466,7 @@ correlations <- as.data.frame(raq_matrix)
 # Correlation plot
 
 library(psych)
-corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations between variables")
+corPlot(correlations,numbers=TRUE,upper=FALSE,diag=TRUE, colors = FALSE, main="Correlations between variables")
 # Check number of low correlations adn mean correlaiton per variable
 
 diag(correlations) <- NA #set diagonal elements to missing
@@ -830,227 +831,6 @@ dat %>% group_by(meat_concat2) %>%
   mutate(cum = cumsum(per))
 
 
-
-#--------------------------------------------------#
-# CV: NEP Scale (Ecological Worldview) 2016 ####                          
-#--------------------------------------------------#
-q16a <- c(
-#  "dczd001a", # Großstadtnähe Wohngegend 
-  "dczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen C
-  "dczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen A
-  "dczd004a", # NEP-Skala: Folgen von menschlichem Eingriff B
-  "dczd005a", # NEP-Skala: Menschlicher Einfallsreichtum A
-  "dczd006a", # NEP-Skala: Missbrauch der Umwelt durch Menschen B
-  "dczd007a", # NEP-Skala: Genügend natürliche Rohstoffe A
-  "dczd008a", # NEP-Skala: Pflanzen und Tiere gleiches Recht B
-  "dczd009a", # NEP-Skala: Gleichgewicht der Natur stabil genug A
-  "dczd010a", # NEP-Skala: Menschen Naturgesetzen unterworfen B
-  "dczd011a", # NEP-Skala: Umweltkrise stark übertrieben. A
-  "dczd012a", # NEP-Skala: Erde ist wie Raumschiff C
-  "dczd013a", # NEP-Skala: Menschen zur Herrschaft über Natur bestimmt A
-  "dczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich B
-  "dczd015a", # NEP-Skala: Natur kontrollieren A
-  "dczd016a" # NEP-Skala: Umweltkatastrophe B
-)
-
-#A: human domination of nature (RC2)
-#B: balance of nature (RC1)
-#C: limits to growth (RC3)
-# Recoding the variable so that high score means "high ecological worldview"
-q16a_nep_rec <- q16a[c(1,3,5,7,9,11,13,15)]
-
-dat[, q16a_nep_rec] <- lapply(dat[, q16a_nep_rec], function(i) 
-ifelse(i == 1, 5, 
-ifelse(i == 2, 4,
-ifelse(i == 3, 3,
-ifelse(i == 4, 2,
-ifelse(i == 5, 1, NA))))))
-
-#--------------------------------------------------#
-# PCA (NEP)                             
-#--------------------------------------------------#
-
-# STEP 1
-
-# Inspect correlation matrix
-
-raq_matrix <- cor(dat[,q16a], use="complete.obs") #create matrix
-round(raq_matrix,3)
-
-# Low correlations by variable
-
-correlations <- as.data.frame(raq_matrix)
-# Correlation plot
-
-library(psych)
-corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations between variables")
-# Check number of low correlations adn mean correlaiton per variable
-
-diag(correlations) <- NA #set diagonal elements to missing
-apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correlations for each variable
-apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
-# Conduct Bartlett's test (p should be < 0.05)
-
-cortest.bartlett(raq_matrix, n = nrow(dat))
-# Count number of high correlations for each variable
-
-apply(abs(correlations) > 0.8, 1, sum, na.rm = TRUE)
-# Compute determinant (should be > 0.00001)
-
-det(raq_matrix)
-det(raq_matrix) > 0.00001
-
-# Compute MSA statstic (should be > 0.5)
-
-KMO(dat[,q16a])
-
-# STEP 2
-
-# Deriving factors
-# Find the number of factors to extract
-pc1 <- principal(dat[,q16a], nfactors = 15, rotate = "none")
-pc1
-
-plot(pc1$values, type="b")
-abline(h=1, lty=2)
-
-# Run model with appropriate number of factors
-
-pc2 <- principal(dat[,q16a], nfactors = 3, rotate = "none")
-pc2
-# Inspect residuals
-
-# Create residuals matrix
-residuals <- factor.residuals(raq_matrix, pc2$loadings)
-round(residuals,3)
-
-# Create reproduced matrix
-reproduced_matrix <- factor.model(pc2$loadings)
-round(reproduced_matrix,3)
-# Compute model fit manually (optional - also included in output)
-
-ssr <- (sum(residuals[upper.tri((residuals))]^2)) #sum of squared residuals 
-ssc <- (sum(raq_matrix[upper.tri((raq_matrix))]^2)) #sum of squared correlations
-ssr/ssc #ratio of ssr and ssc
-1-(ssr/ssc) #model fit
-
-# Share of residuals > 0.05 (should be < 50%)
-residuals <- as.matrix(residuals[upper.tri((residuals))])
-large_res <- abs(residuals) > 0.05
-sum(large_res)
-sum(large_res)/nrow(residuals)
-
-# Test if residuals are approximately normally distributed
-
-hist(residuals)
-qqnorm(residuals) 
-qqline(residuals)
-shapiro.test(residuals)
-
-# STEP 3
-# oblique factor rotation 
-pc3 <- principal(dat[,q16a], nfactors = 3, rotate = "oblimin")
-pc3
-print.psych(pc3, cut = 0.3)
-
-
-# Orthogonal factor rotation without the 07 item, which loads to high on other factors
-pc3 <- principal(dat[,q16a[-6]], nfactors = 3, rotate = "varimax")
-pc3
-print.psych(pc3)
-
-#--------------------------------------------------#
-# Reliability Analysis                            
-#--------------------------------------------------#
-
-### Three Dimensional NEP Scale as suggested by PCA
-
-# Specify subscales according to results of PCA
-#A: human domination of nature (RC2)
-#B: balance of nature (RC1)
-#C: limits to growth (RC3)
-nep_dom <- dat[,q16a[c(2,4,8,10,12,14)]]
-nep_bal <- dat[,q16a[c(3,5,7,9,13,15)]]
-nep_gro <- dat[,q16a[c(1,11)]]
-
-# Test reliability of subscales
-psych::alpha(nep_dom)
-psych::alpha(nep_bal)
-psych::alpha(nep_gro)
-
-### One Dimensional NEP Scale
-nep <- dat[,q16a]
-
-# Test reliability of subscales
-psych::alpha(nep)
-
-#--------------------------------------------------#
-# Constructing different NEP Variables                            
-#--------------------------------------------------#
-
-### Three Dimensional
-
-#get the scores from the PCA in our original data frame
-dat <- cbind(dat, pc3$scores)
-
-# give factors meaningful names
-
-dat <- dat %>% rename("nep_bal" = "RC1",
-                      "nep_dom" = "RC2",
-                      "nep_gro" = "RC3")
-
-
-
-#--------------------------------------------------#
-# One Dimensional Summing Index                             
-#--------------------------------------------------#
-
-# we will use all variables as in Dunlap(2000) stated
-
-# Test reliability of subscales
-q16a_ind <- q16a
-
-nep <- dat[,q16a_ind]
-psych::alpha(nep)
-
-# Interesting comment on what to take https://www.theanalysisfactor.com/index-score-factor-analysis/
-
-# Factor Scores
-# Orthogonal factor rotation without the 07 item, which loads to high on other factors
-pc3 <- principal(dat[,q16a], nfactors = 1, rotate = "none")
-pc3
-print.psych(pc3, cut = 0.3)
-
-# now bind this only One Dimensional NEP factor to our original data frame
-dat <- cbind(dat, pc3$scores)
-
-dat <- dat %>% rename("nep_scores" = "PC1")
-
-
-# Factor-Based Scores (Summed up and standardized to 1-10)
-# excluding item 6 to keep things consistent (Might need to reverse this, depending on how I proceed)
-
-
-# creating a sum over all the selected items
-dat$nep_sum <- dat %>% select(q16a_ind) %>%
-  mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
-
-# counting the NAs
-dat$nep_nas <- apply(dat[,q16a_ind], MARGIN = 1, function(x) sum(is.na(x)))
-
-# quick check
-dat[,c(q16a_ind, "nep_sum", "nep_nas")]
-
-# if there are more than 50% Nas don´t calculate the mean, otherwise take the average
-dat <- dat %>% mutate(nep_ind = ifelse(nep_nas > round(length(q16a_ind)/2)  , NA, 
-                                 ifelse(nep_nas == 0, nep_sum/length(q16a_ind),
-                                 ifelse(nep_nas !=0, nep_sum/(length(q16a_ind)-nep_nas),NA))))
-
-
-dat %>% select(q16a_ind,"nep_sum","nep_nas","nep_ind")
-
-
-
 #--------------------------------------------------#
 # CV: NEP Scale (Ecological Worldview) 2015 ####                          
 #--------------------------------------------------#
@@ -1086,8 +866,56 @@ ifelse(i == 3, 3,
 ifelse(i == 4, 2,
 ifelse(i == 5, 1, NA))))))
 
+# creating labels
+
+nep_labels <- c("Höchstzahl (2)",
+            "Bedürfnisse (3)",
+            "Eingriff (4)",
+            "Einfallsreichtum (5)",
+            "Missbrauch (6)",
+            "Rohstoffe (7)",
+            "Recht (8)",
+            "Gleichgewicht (9)",
+            "Naturgesetze (10)",
+            "Umweltkrise (11)",
+            "Raumschiff (12)",
+            "Herrschaft (13)",
+            "Gleichgewicht2 (14)",
+            "Kontrollieren (15)",
+            "Katastrophe (16)")
+
+
+##"cczd001a", # Großstadtnähe Wohngegend
+#"cczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen  || the reality of limits to growth
+#"cczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen  || antianthropocentrism
+#"cczd004a", # NEP-Skala: Folgen von menschlichem Eingriff  ||the fragility of nature’s balance
+#"cczd005a", # NEP-Skala: Menschlicher Einfallsreichtum  || rejection of exemptionalism
+#"cczd006a", # NEP-Skala: Missbrauch der Umwelt durch Menschen  || possibility of an ecocrisis
+#"cczd007a", # NEP-Skala: Genügend natürliche Rohstoffe  || the reality of limits to growth
+#"cczd008a", # NEP-Skala: Pflanzen und Tiere gleiches Recht  || antianthropocentrism
+#"cczd009a", # NEP-Skala: Gleichgewicht der Natur stabil genug  || the fragility of nature’s balance
+#"cczd010a", # NEP-Skala: Menschen Naturgesetzen unterworfen  || rejection of exemptionalism
+#"cczd011a", # NEP-Skala: Umweltkrise stark übertrieben.  || possibility of an ecocrisis
+#"cczd012a", # NEP-Skala: Erde ist wie Raumschiff  || the reality of limits to growth
+#"cczd013a", # NEP-Skala: Menschen zur Herrschaft über Natur bestimmt  || antianthropocentrism
+#"cczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich  || the fragility of nature’s balance
+#"cczd015a", # NEP-Skala: Natur kontrollieren  || rejection of exemptionalism
+#"cczd016a") # NEP-Skala: Umweltkatastrophe || possibility of an ecocrisis
+
+
+
+
+
+
+# the reality of limits to growth (1, 6, 11), 
+# antianthropocentrism (2, 7, 12), 
+# the fragility of nature’s balance (3, 8, 13), 
+# rejection of exemptionalism (4, 9, 14) 
+# and the possibility of an ecocrisis (5, 10, 15).
+
+
 #--------------------------------------------------#
-# PCA (Environmental Identity)                             
+# PCA for NEP - Scale                        
 #--------------------------------------------------#
 
 # STEP 1
@@ -1102,17 +930,20 @@ round(raq_matrix,3)
 correlations <- as.data.frame(raq_matrix)
 # Correlation plot
 
-library(psych)
-corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations between variables")
-# Check number of low correlations adn mean correlaiton per variable
 
+library(psych)
+pdf(paste0(latexpath,"descriptives/nepcors.pdf"), family = "CM Roman")
+corPlot(correlations, numbers=TRUE, upper=FALSE, diag=TRUE, colors = FALSE, zlim = c(0:1), labels = nep_labels)
+dev.off()
+#knitr::plot_crop(paste0(latexpath,"descriptives/nepcors.pdf"))
+# Check number of low correlations adn mean correlaiton per variable
 diag(correlations) <- NA #set diagonal elements to missing
 apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correlations for each variable
 apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
 
 
 # let´s kick variables that don´t correlate with any others (< 0.3) and repeat the step above
-q15d <- q15d[!(q15d %in% c("cczd007a","cczd002a","cczd010a"))]
+# q15d <- q15d[!(q15d %in% c("cczd007a","cczd002a","cczd010a"))]
 
 # STEP 1
 
@@ -1133,6 +964,16 @@ corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations betw
 diag(correlations) <- NA #set diagonal elements to missing
 apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correlations for each variable
 apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
+
+
+
+# inter item total correlation
+library(corrr)
+cors <- dat[,q15d]
+cors$score <- rowMeans(cors)
+item_total <- cors %>% correlate() %>% focus(score)
+mean(item_total$score)
+max(item_total$score)
 
 # Conduct Bartlett's test (p should be < 0.05)
 
@@ -1154,9 +995,8 @@ KMO(dat[,q15d])
 # Deriving factors
 
 
-
 # Find the number of factors to extract
-pc1b <- principal(dat[,q15d], nfactors = length(q15d), rotate = "none")
+pc1b <- principal(dat[,q15d], nfactors = 1, rotate = "none")
 pc1b
 
 plot(pc1b$values, type="b")
@@ -1164,7 +1004,7 @@ abline(h=1, lty=2)
 
 # Run model with appropriate number of factors
 
-pc2b <- principal(dat[,q15d], nfactors = 2, rotate = "none")
+pc2b <- principal(dat[,q15d], nfactors = 4, rotate = "none")
 pc2b
 # Inspect residuals
 
@@ -1197,13 +1037,13 @@ shapiro.test(residuals)
 
 # STEP 3
 # Orthogonal factor rotation without the 07 item, which loads to high on other factors
-pc3c <- principal(dat[,q15d], nfactors = 2, rotate = "varimax")
+pc3c <- principal(dat[,q15d], nfactors = 4, rotate = "varimax")
 pc3c
 
 print.psych(pc3c, cut = 0.3)
 
 # Orthogonal factor rotation 
-pc3b <- principal(dat[,q15d], nfactors = 2, rotate = "oblimin", scores = TRUE, missing = TRUE)
+pc3b <- principal(dat[,q15d], nfactors = 4, rotate = "oblimin", scores = TRUE, missing = TRUE)
 pc3b
 print.psych(pc3b, cut = 0.3)
 
@@ -1247,35 +1087,143 @@ print.psych(pc3b, cut = 0.3)
 ### Three Dimensional
 
 #get the scores from the PCA in our original data frame
-dat <- cbind(dat, pc3b$scores)
+dat <- cbind(dat, pc3c$scores)
 
 # give factors meaningful names
 
-dat <- dat %>% rename("nep_bal15" = "TC1",
-                      "nep_dom15" = "TC2")
-
+dat <- dat %>% rename("nep_bal15" = "RC1",
+                      "nep_dom15" = "RC2")
 
 
 #--------------------------------------------------#
 # Reliability Analysis                             
 #--------------------------------------------------#
 
-
 # Test reliability of subscales
-nep_dom15 <- dat[,q15d[c(1,3,6,7,9,11)]]
-nep_bal15 <- dat[,q15d[c(2,4,5,8,10,12)]]
+nep_dom15 <- dat[,q15d[c(1,3,6,8,10,12)]]
+nep_bal15 <- dat[,q15d[c(2,4,5,7,9,11,13)]]
 
 # Test reliability of subscales
 psych::alpha(nep_dom15)
 psych::alpha(nep_bal15)
 
+#--------------------------------------------------#
+# Creating the Latex Table                             
+#--------------------------------------------------#
+
+# creating a summary table in kable
+# step 1: create the data frame with the loadings
+neppca_single <- as.data.frame(round(unclass(pc3c$loadings),2))
+
+
+# cut out everything below 0.3
+# eipca[ eipca < 0.3 ] <- ""
+
+
+# step 2: extract the relevant other informations
+# first: variance explained
+var <- pc3c$Vaccounted[2,]*100
+
+#second: Eigenvalues
+eig <- pc3c$Vaccounted[1,]
+
+# third: reliability analysis
+rel1 <- identity1_rel$total[2]
+rel2 <- identity2_rel$total[2]
+
+# step 3: combine all in a data frame
+neppca_single[nrow(neppca_single) + 1,] <- var
+neppca_single[nrow(neppca_single) + 1,] <- eig
+
+
+
+nep_labels <- 
+  c("Höchstzahl (2)",
+    "Bedürfnisse (3)",
+    "Eingriff (4)",
+    "Einfallsreichtum (5)",
+    "Missbrauch (6)",
+    "Rohstoffe (7)",
+    "Recht (8)",
+    "Gleichgewicht (9)",
+    "Naturgesetze (10)",
+    "Umweltkrise (11)",
+    "Raumschiff (12)",
+    "Herrschaft (13)",
+    "Gleichgewicht2 (14)",
+    "Kontrollieren (15)",
+    "Katastrophe (16)")
+
+nep_labels_fac <- 
+  c("Limits",
+    "Anti-Anthro",
+    "Balance",
+    "Anti-Exempt",
+    "Eco-Crisis",
+    "Limits",
+    "Anti-Anthro",
+    "Balance",
+    "Anti-Exempt",
+    "Eco-Crisis",
+    "Limits",
+    "Anti-Anthro",
+    "Balance",
+    "Anti-Exempt",
+    "Eco-Crisis")
+
+
+
+
+##"cczd001a", # Großstadtnähe Wohngegend
+#"cczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen  || the reality of limits to growth
+#"cczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen  || antianthropocentrism
+#"cczd004a", # NEP-Skala: Folgen von menschlichem Eingriff  ||the fragility of nature’s balance
+#"cczd005a", # NEP-Skala: Menschlicher Einfallsreichtum  || rejection of exemptionalism
+#"cczd006a", # NEP-Skala: Missbrauch der Umwelt durch Menschen  || possibility of an ecocrisis
+#"cczd007a", # NEP-Skala: Genügend natürliche Rohstoffe  || the reality of limits to growth
+#"cczd008a", # NEP-Skala: Pflanzen und Tiere gleiches Recht  || antianthropocentrism
+#"cczd009a", # NEP-Skala: Gleichgewicht der Natur stabil genug  || the fragility of nature’s balance
+#"cczd010a", # NEP-Skala: Menschen Naturgesetzen unterworfen  || rejection of exemptionalism
+#"cczd011a", # NEP-Skala: Umweltkrise stark übertrieben.  || possibility of an ecocrisis
+#"cczd012a", # NEP-Skala: Erde ist wie Raumschiff  || the reality of limits to growth
+#"cczd013a", # NEP-Skala: Menschen zur Herrschaft über Natur bestimmt  || antianthropocentrism
+#"cczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich  || the fragility of nature’s balance
+#"cczd015a", # NEP-Skala: Natur kontrollieren  || rejection of exemptionalism
+#"cczd016a") # NEP-Skala: Umweltkatastrophe || possibility of an ecocrisis
+
+
+
+# the reality of limits to growth  2,7,12 - CHECK - RC 3
+# antianthropocentrism 3,8,13 - 3 und 8 RC 1
+# the fragility of nature’s balance  4,9,14 - 4 und 9 RC 2
+# rejection of exemptionalism  5,10,15
+# and the possibility of an ecocrisis  6,11,16
+
+# create a new columns
+neppca_single$Theorie <- NA
+
+# fill the new column with labels
+neppca_single[1:15,"Theorie"] <- nep_labels_fac
+rownames(neppca_single) <- c(nep_labels,"Erklärte Varianz in %","Eigenwert")
+colnames(neppca_single) <- c("Faktor1","Faktor2","Faktor3","Faktor4","Theorie")
+
+neppca_single <- neppca_single %>% select(5,1:4)
+
+neppca_single <- neppca_single[order(neppca_single[,1]),]
+
+kable(neppca_single, format = "latex", booktabs = TRUE, digits = 2, linesep = c("", "", "\\addlinespace")) %>% 
+  row_spec(15, hline_after = T) %>% 
+  save_kable(paste0(latexpath, "appendix/neppca"), keep_tex = TRUE)
+
+setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 
 
 #--------------------------------------------------#
 # creating a single NEP Scale                             
 #--------------------------------------------------#
 
-q15d_ind <- q15d
+q15d_ind <- dat[,q15d_ind]
+alpha(q15d_ind)
 
 # Interesting comment on what to take https://www.theanalysisfactor.com/index-score-factor-analysis/
 
@@ -1288,7 +1236,7 @@ print.psych(pc4b, cut = 0.3)
 # now bind this only One Dimensional NEP factor to our original data frame
 dat <- cbind(dat, pc4b$scores)
 
-dat <- dat %>% rename("nep_single15" = "PC1")
+dat <- dat %>% rename("nep_single_fac" = "PC1")
 
 dat %>% select(q15d) %>% summarise_all(funs(sum(is.na(.))))
 
@@ -1310,13 +1258,68 @@ dat <- dat %>% mutate(nep_single15 = ifelse(nep_nas > round(length(q15d)/2), NA,
 dat[,c(q15d_ind, "nep_sum", "nep_nas")]
 
 # if there are more than 50% Nas don´t calculate the mean, otherwise take the average
-dat <- dat %>% mutate(nep_ind15 = ifelse(nep_nas > round(length(q15d_ind)/2)  , NA, 
+dat <- dat %>% mutate(nep_ind = ifelse(nep_nas > round(length(q15d_ind)/2)  , NA, 
                                   ifelse(nep_nas == 0, nep_sum/length(q15d_ind),
                                   ifelse(nep_nas !=0, nep_sum/(length(q15d_ind)-nep_nas),NA))))
 
 dat %>% select(q15d_ind,"nep_sum","nep_nas","nep_ind15")
 
 dat %>% select(nep_ind15, nep_ind, nep_scores, nep_single15)
+
+
+#--------------------------------------------------#
+# reliability                             
+#--------------------------------------------------#
+rel_nep <- psych::alpha(q15d_ind)
+
+
+
+
+#--------------------------------------------------#
+# creating the latex table                             
+#--------------------------------------------------#
+# step 1: create the data frame
+neppca_single <- as.data.frame(round(unclass(pc4b$loadings),2))
+
+# step 2: extract the relevant other informations
+# first: variance explained
+var <- pc4b$Vaccounted[2,]*100
+
+#second: Eigenvalues
+eig <- pc4b$Vaccounted[1,]
+
+# third: reliability analysis
+rel1 <- rel_nep$total[2]
+
+# get item-total correlations
+corrs <- item_total$score
+
+# create a new columns
+neppca_single$corrs <- corrs
+
+# step 3: combine all in a data frame
+neppca_single[nrow(neppca_single) + 1,1] <- var
+neppca_single[nrow(neppca_single) + 1,1] <- eig
+neppca_single[nrow(neppca_single) + 1,1] <- rel1
+
+
+# fill the new column with labels
+rownames(neppca_single) <- c(nep_labels,"Erklärte Varianz in %","Eigenwert","Cronbach's Alpha")
+colnames(neppca_single) <- c("Faktor1","Faktor2","Faktor3","Faktor4","Theorie")
+
+
+kable(neppca_single, 
+      format = "latex", 
+      booktabs = TRUE, 
+      digits = 2,
+      col.names = c("Faktor", linebreak("Item-Total\n Korrelation")), escape = FALSE) %>% 
+  row_spec(15, hline_after = T) %>% 
+  save_kable(paste0(latexpath, "appendix/neppca_single"), keep_tex = TRUE)
+
+setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
+
+
+
 
 
 
@@ -2680,5 +2683,230 @@ stargazer(reg1, reg2, reg3, reg5, type = "text",ci = TRUE, ci.level = 0.95, ci.s
 
 
 stargazer(reg1,reg2,reg3)
+
+
+
+#================================================#
+# Experimenting Place ####
+#================================================#
+
+#--------------------------------------------------#
+# CV: NEP Scale (Ecological Worldview) 2016 ####                          
+#--------------------------------------------------#
+q16a <- c(
+  #  "dczd001a", # Großstadtnähe Wohngegend 
+  "dczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen C
+  "dczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen A
+  "dczd004a", # NEP-Skala: Folgen von menschlichem Eingriff B
+  "dczd005a", # NEP-Skala: Menschlicher Einfallsreichtum A
+  "dczd006a", # NEP-Skala: Missbrauch der Umwelt durch Menschen B
+  "dczd007a", # NEP-Skala: Genügend natürliche Rohstoffe A
+  "dczd008a", # NEP-Skala: Pflanzen und Tiere gleiches Recht B
+  "dczd009a", # NEP-Skala: Gleichgewicht der Natur stabil genug A
+  "dczd010a", # NEP-Skala: Menschen Naturgesetzen unterworfen B
+  "dczd011a", # NEP-Skala: Umweltkrise stark übertrieben. A
+  "dczd012a", # NEP-Skala: Erde ist wie Raumschiff C
+  "dczd013a", # NEP-Skala: Menschen zur Herrschaft über Natur bestimmt A
+  "dczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich B
+  "dczd015a", # NEP-Skala: Natur kontrollieren A
+  "dczd016a" # NEP-Skala: Umweltkatastrophe B
+)
+
+#A: human domination of nature (RC2)
+#B: balance of nature (RC1)
+#C: limits to growth (RC3)
+# Recoding the variable so that high score means "high ecological worldview"
+q16a_nep_rec <- q16a[c(1,3,5,7,9,11,13,15)]
+
+dat[, q16a_nep_rec] <- lapply(dat[, q16a_nep_rec], function(i) 
+  ifelse(i == 1, 5, 
+         ifelse(i == 2, 4,
+                ifelse(i == 3, 3,
+                       ifelse(i == 4, 2,
+                              ifelse(i == 5, 1, NA))))))
+
+#--------------------------------------------------#
+# PCA (NEP)                             
+#--------------------------------------------------#
+
+# STEP 1
+
+# Inspect correlation matrix
+
+raq_matrix <- cor(dat[,q16a], use="complete.obs") #create matrix
+round(raq_matrix,3)
+
+# Low correlations by variable
+
+correlations <- as.data.frame(raq_matrix)
+# Correlation plot
+
+library(psych)
+corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations between variables")
+# Check number of low correlations adn mean correlaiton per variable
+
+diag(correlations) <- NA #set diagonal elements to missing
+apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correlations for each variable
+apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
+# Conduct Bartlett's test (p should be < 0.05)
+
+cortest.bartlett(raq_matrix, n = nrow(dat))
+# Count number of high correlations for each variable
+
+apply(abs(correlations) > 0.8, 1, sum, na.rm = TRUE)
+# Compute determinant (should be > 0.00001)
+
+det(raq_matrix)
+det(raq_matrix) > 0.00001
+
+# Compute MSA statstic (should be > 0.5)
+
+KMO(dat[,q16a])
+
+# STEP 2
+
+# Deriving factors
+# Find the number of factors to extract
+pc1 <- principal(dat[,q16a], nfactors = 15, rotate = "none")
+pc1
+
+plot(pc1$values, type="b")
+abline(h=1, lty=2)
+
+# Run model with appropriate number of factors
+
+pc2 <- principal(dat[,q16a], nfactors = 3, rotate = "none")
+pc2
+# Inspect residuals
+
+# Create residuals matrix
+residuals <- factor.residuals(raq_matrix, pc2$loadings)
+round(residuals,3)
+
+# Create reproduced matrix
+reproduced_matrix <- factor.model(pc2$loadings)
+round(reproduced_matrix,3)
+# Compute model fit manually (optional - also included in output)
+
+ssr <- (sum(residuals[upper.tri((residuals))]^2)) #sum of squared residuals 
+ssc <- (sum(raq_matrix[upper.tri((raq_matrix))]^2)) #sum of squared correlations
+ssr/ssc #ratio of ssr and ssc
+1-(ssr/ssc) #model fit
+
+# Share of residuals > 0.05 (should be < 50%)
+residuals <- as.matrix(residuals[upper.tri((residuals))])
+large_res <- abs(residuals) > 0.05
+sum(large_res)
+sum(large_res)/nrow(residuals)
+
+# Test if residuals are approximately normally distributed
+
+hist(residuals)
+qqnorm(residuals) 
+qqline(residuals)
+shapiro.test(residuals)
+
+# STEP 3
+# oblique factor rotation 
+pc3 <- principal(dat[,q16a], nfactors = 3, rotate = "oblimin")
+pc3
+print.psych(pc3, cut = 0.3)
+
+
+# Orthogonal factor rotation without the 07 item, which loads to high on other factors
+pc3 <- principal(dat[,q16a[-6]], nfactors = 3, rotate = "varimax")
+pc3
+print.psych(pc3)
+
+#--------------------------------------------------#
+# Reliability Analysis                            
+#--------------------------------------------------#
+
+### Three Dimensional NEP Scale as suggested by PCA
+
+# Specify subscales according to results of PCA
+#A: human domination of nature (RC2)
+#B: balance of nature (RC1)
+#C: limits to growth (RC3)
+nep_dom <- dat[,q16a[c(2,4,8,10,12,14)]]
+nep_bal <- dat[,q16a[c(3,5,7,9,13,15)]]
+nep_gro <- dat[,q16a[c(1,11)]]
+
+# Test reliability of subscales
+psych::alpha(nep_dom)
+psych::alpha(nep_bal)
+psych::alpha(nep_gro)
+
+### One Dimensional NEP Scale
+nep <- dat[,q16a]
+
+# Test reliability of subscales
+psych::alpha(nep)
+
+#--------------------------------------------------#
+# Constructing different NEP Variables                            
+#--------------------------------------------------#
+
+### Three Dimensional
+
+#get the scores from the PCA in our original data frame
+dat <- cbind(dat, pc3$scores)
+
+# give factors meaningful names
+
+dat <- dat %>% rename("nep_bal" = "RC1",
+                      "nep_dom" = "RC2",
+                      "nep_gro" = "RC3")
+
+
+
+#--------------------------------------------------#
+# One Dimensional Summing Index                             
+#--------------------------------------------------#
+
+# we will use all variables as in Dunlap(2000) stated
+
+# Test reliability of subscales
+q16a_ind <- q16a
+
+nep <- dat[,q16a_ind]
+psych::alpha(nep)
+
+# Interesting comment on what to take https://www.theanalysisfactor.com/index-score-factor-analysis/
+
+# Factor Scores
+# Orthogonal factor rotation without the 07 item, which loads to high on other factors
+pc3 <- principal(dat[,q16a], nfactors = 1, rotate = "none")
+pc3
+print.psych(pc3, cut = 0.3)
+
+# now bind this only One Dimensional NEP factor to our original data frame
+dat <- cbind(dat, pc3$scores)
+
+dat <- dat %>% rename("nep_scores" = "PC1")
+
+
+# Factor-Based Scores (Summed up and standardized to 1-10)
+# excluding item 6 to keep things consistent (Might need to reverse this, depending on how I proceed)
+
+
+# creating a sum over all the selected items
+dat$nep_sum <- dat %>% select(q16a_ind) %>%
+  mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
+
+# counting the NAs
+dat$nep_nas <- apply(dat[,q16a_ind], MARGIN = 1, function(x) sum(is.na(x)))
+
+# quick check
+dat[,c(q16a_ind, "nep_sum", "nep_nas")]
+
+# if there are more than 50% Nas don´t calculate the mean, otherwise take the average
+dat <- dat %>% mutate(nep_ind = ifelse(nep_nas > round(length(q16a_ind)/2)  , NA, 
+                                       ifelse(nep_nas == 0, nep_sum/length(q16a_ind),
+                                              ifelse(nep_nas !=0, nep_sum/(length(q16a_ind)-nep_nas),NA))))
+
+
+dat %>% select(q16a_ind,"nep_sum","nep_nas","nep_ind")
+
 
 
