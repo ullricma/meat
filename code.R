@@ -693,6 +693,21 @@ setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 
 
 
+#--------------------------------------------------#
+# creating the histogram                             
+#--------------------------------------------------#
+pdf(paste0(latexpath,"descriptives/eihist.pdf"), family = "CM Roman", width = 8, height = 5)
+#tikz(file = paste0(latexpath,"descriptives/eihist.tex"))
+ggplot(dat, aes(x=ei_ind)) + 
+  geom_histogram(bins=20, na.rm = TRUE) +
+  theme_minimal() +
+  labs(x = "Umweltidentität (Index)", y = "Häufigkeit\n") +
+  geom_vline(xintercept = mean(dat$ei_ind, na.rm = TRUE), size = 1.5) +
+  annotate("text", x=3.2, y=550, label= "Mittelwert (3.8)") +
+  theme_set(theme_minimal(base_size = 11))
+
+dev.off()
+
 
 #================================================#
 # IV2: Salience, Prominence und Commitment  ####
@@ -794,11 +809,6 @@ ifelse(dat$meat_con == 6, 2,
 ifelse(dat$meat_con == 7, 1,NA)))))))
 
 # overview of cases
-prop.table(table(dat$meat_con))
-
-tabyl(dat$meat_con)
-
-taby
 
 # Creating a second meat_consumption variable that is easier to interpret
 
@@ -823,13 +833,57 @@ dat <- dat %>% mutate(meat_concat2 = ifelse(meat_con %in% c(1,2), 1,
                                      ifelse(meat_con %in% c(5), 3,
                                      ifelse(meat_con %in% c(6,7), 4, NA)))))
 
-
-
 dat %>% group_by(meat_concat2) %>% 
   summarise(mean = mean(ei_single, na.rm = TRUE), n = n()) %>% 
   mutate(per = n / sum(n)*100) %>% 
   mutate(cum = cumsum(per))
 
+
+
+#--------------------------------------------------#
+# creating a Latex Table
+#--------------------------------------------------#
+
+hist(dat$meat_con)
+
+# create labels for the plot
+labels <- c(
+"An jedem Tag\n mehrmals",
+"An jedem Tag\n einmal",
+"An 5-6 Tagen\n pro Woche",
+"An 3-4 Tagen\n pro Woche",
+"An 1-2 Tagen\n pro Woche",
+"Seltener",
+"Gar nicht")
+
+# reverse the labels to match the calculation
+labels <- rev(labels)
+
+# create a data frame with the relevant data
+df <- dat %>% group_by(meat_con) %>% summarise(n = n())
+
+# add the labels column
+df$labs <- labels
+
+# get percentages
+df$total <- nrow(dat)
+df$per <- round(df$n/df$total*100,0)
+
+df$per <- paste0("(",df$per," %)")
+
+# plot it
+pdf(paste0(latexpath,"descriptives/meatconbar.pdf"), family = "CM Roman", width = 8.5 , height= 7)
+
+ggplot(df, aes(x = labels, y=n, label = n)) + 
+  geom_bar(stat = "identity", width = 0.2) + 
+  scale_x_discrete(limits = labels) +
+  geom_text(size = 3.5, position=position_dodge(width=0.9), vjust=-1.5) +
+  geom_text(aes(label=per), size = 3.5, position=position_dodge(width=0.9), vjust=-0.25) +
+  labs(x = "\n Eingeschätzter Fleischkonsum", y = "Häufigkeit\n") + 
+  theme_minimal(base_size = 12) +
+  scale_y_continuous(limits = c(0,800), n.breaks = 3)
+
+dev.off()
 
 #--------------------------------------------------#
 # CV: NEP Scale (Ecological Worldview) 2015 ####                          
@@ -868,21 +922,21 @@ ifelse(i == 5, 1, NA))))))
 
 # creating labels
 
-nep_labels <- c("Höchstzahl (2)",
-            "Bedürfnisse (3)",
-            "Eingriff (4)",
-            "Einfallsreichtum (5)",
-            "Missbrauch (6)",
-            "Rohstoffe (7)",
-            "Recht (8)",
-            "Gleichgewicht (9)",
-            "Naturgesetze (10)",
-            "Umweltkrise (11)",
-            "Raumschiff (12)",
-            "Herrschaft (13)",
-            "Gleichgewicht2 (14)",
-            "Kontrollieren (15)",
-            "Katastrophe (16)")
+nep_labels <- c("Höchstzahl (1)",
+            "Bedürfnisse (2)",
+            "Eingriff (3)",
+            "Einfallsreichtum (4)",
+            "Missbrauch (5)",
+            "Rohstoffe (6)",
+            "Recht (7)",
+            "Gleichgewicht (8)",
+            "Naturgesetze (9)",
+            "Umweltkrise (10)",
+            "Raumschiff (11)",
+            "Herrschaft (12)",
+            "Gleichgewicht2 (13)",
+            "Kontrollieren (14)",
+            "Katastrophe (15)")
 
 
 ##"cczd001a", # Großstadtnähe Wohngegend
@@ -901,11 +955,6 @@ nep_labels <- c("Höchstzahl (2)",
 #"cczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich  || the fragility of nature’s balance
 #"cczd015a", # NEP-Skala: Natur kontrollieren  || rejection of exemptionalism
 #"cczd016a") # NEP-Skala: Umweltkatastrophe || possibility of an ecocrisis
-
-
-
-
-
 
 # the reality of limits to growth (1, 6, 11), 
 # antianthropocentrism (2, 7, 12), 
@@ -929,8 +978,6 @@ round(raq_matrix,3)
 
 correlations <- as.data.frame(raq_matrix)
 # Correlation plot
-
-
 library(psych)
 pdf(paste0(latexpath,"descriptives/nepcors.pdf"), family = "CM Roman")
 corPlot(correlations, numbers=TRUE, upper=FALSE, diag=TRUE, colors = FALSE, zlim = c(0:1), labels = nep_labels)
@@ -964,8 +1011,6 @@ corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations betw
 diag(correlations) <- NA #set diagonal elements to missing
 apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correlations for each variable
 apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
-
-
 
 # inter item total correlation
 library(corrr)
@@ -1039,73 +1084,8 @@ shapiro.test(residuals)
 # Orthogonal factor rotation without the 07 item, which loads to high on other factors
 pc3c <- principal(dat[,q15d], nfactors = 4, rotate = "varimax")
 pc3c
-
 print.psych(pc3c, cut = 0.3)
 
-# Orthogonal factor rotation 
-pc3b <- principal(dat[,q15d], nfactors = 4, rotate = "oblimin", scores = TRUE, missing = TRUE)
-pc3b
-print.psych(pc3b, cut = 0.3)
-
-#--------------------------------------------------#
-# Reliability Analysis                            
-#--------------------------------------------------#
-
-### Three Dimensional NEP Scale as suggested by PCA
-
-# Specify subscales according to results of PCA
-#A: human domination of nature (RC2)
-#B: balance of nature (RC1)
-#C: limits to growth (RC3)
-
-#"cczd001a", # Großstadtnähe Wohngegend
-#"cczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen # deleted
-#"cczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen # TC1
-#"cczd004a", # NEP-Skala: Folgen von menschlichem Eingriff #TC2
-#"cczd005a", # NEP-Skala: Menschlicher Einfallsreichtum # TC1
-#"cczd006a", # NEP-Skala: Missbrauch der Umwelt durch Menschen #TC2 
-#"cczd007a", # NEP-Skala: Genügend natürliche Rohstoffe deleted
-#"cczd008a", # NEP-Skala: Pflanzen und Tiere gleiches Recht #TC2 
-#"cczd009a", # NEP-Skala: Gleichgewicht der Natur stabil genug # TC1 
-#"cczd010a", # NEP-Skala: Menschen Naturgesetzen unterworfen deleted
-#"cczd011a", # NEP-Skala: Umweltkrise stark übertrieben. # TC1
-#"cczd012a", # NEP-Skala: Erde ist wie Raumschiff #TC2
-#"cczd013a", # NEP-Skala: Menschen zur Herrschaft über Natur bestimmt # TC1
-#"cczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich #TC2
-#"cczd015a", # NEP-Skala: Natur kontrollieren # TC1
-#"cczd016a") # NEP-Skala: Umweltkatastrophe #TC2
-
-#TC 1: Mensch Herrschaft über Natur
-#TC 2: balance of nature
-
-
-
-#--------------------------------------------------#
-# Constructing different NEP Variables                            
-#--------------------------------------------------#
-
-### Three Dimensional
-
-#get the scores from the PCA in our original data frame
-dat <- cbind(dat, pc3c$scores)
-
-# give factors meaningful names
-
-dat <- dat %>% rename("nep_bal15" = "RC1",
-                      "nep_dom15" = "RC2")
-
-
-#--------------------------------------------------#
-# Reliability Analysis                             
-#--------------------------------------------------#
-
-# Test reliability of subscales
-nep_dom15 <- dat[,q15d[c(1,3,6,8,10,12)]]
-nep_bal15 <- dat[,q15d[c(2,4,5,7,9,11,13)]]
-
-# Test reliability of subscales
-psych::alpha(nep_dom15)
-psych::alpha(nep_bal15)
 
 #--------------------------------------------------#
 # Creating the Latex Table                             
@@ -1114,7 +1094,6 @@ psych::alpha(nep_bal15)
 # creating a summary table in kable
 # step 1: create the data frame with the loadings
 neppca_single <- as.data.frame(round(unclass(pc3c$loadings),2))
-
 
 # cut out everything below 0.3
 # eipca[ eipca < 0.3 ] <- ""
@@ -1135,25 +1114,6 @@ rel2 <- identity2_rel$total[2]
 neppca_single[nrow(neppca_single) + 1,] <- var
 neppca_single[nrow(neppca_single) + 1,] <- eig
 
-
-
-nep_labels <- 
-  c("Höchstzahl (2)",
-    "Bedürfnisse (3)",
-    "Eingriff (4)",
-    "Einfallsreichtum (5)",
-    "Missbrauch (6)",
-    "Rohstoffe (7)",
-    "Recht (8)",
-    "Gleichgewicht (9)",
-    "Naturgesetze (10)",
-    "Umweltkrise (11)",
-    "Raumschiff (12)",
-    "Herrschaft (13)",
-    "Gleichgewicht2 (14)",
-    "Kontrollieren (15)",
-    "Katastrophe (16)")
-
 nep_labels_fac <- 
   c("Limits",
     "Anti-Anthro",
@@ -1171,33 +1131,6 @@ nep_labels_fac <-
     "Anti-Exempt",
     "Eco-Crisis")
 
-
-
-
-##"cczd001a", # Großstadtnähe Wohngegend
-#"cczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen  || the reality of limits to growth
-#"cczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen  || antianthropocentrism
-#"cczd004a", # NEP-Skala: Folgen von menschlichem Eingriff  ||the fragility of nature’s balance
-#"cczd005a", # NEP-Skala: Menschlicher Einfallsreichtum  || rejection of exemptionalism
-#"cczd006a", # NEP-Skala: Missbrauch der Umwelt durch Menschen  || possibility of an ecocrisis
-#"cczd007a", # NEP-Skala: Genügend natürliche Rohstoffe  || the reality of limits to growth
-#"cczd008a", # NEP-Skala: Pflanzen und Tiere gleiches Recht  || antianthropocentrism
-#"cczd009a", # NEP-Skala: Gleichgewicht der Natur stabil genug  || the fragility of nature’s balance
-#"cczd010a", # NEP-Skala: Menschen Naturgesetzen unterworfen  || rejection of exemptionalism
-#"cczd011a", # NEP-Skala: Umweltkrise stark übertrieben.  || possibility of an ecocrisis
-#"cczd012a", # NEP-Skala: Erde ist wie Raumschiff  || the reality of limits to growth
-#"cczd013a", # NEP-Skala: Menschen zur Herrschaft über Natur bestimmt  || antianthropocentrism
-#"cczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich  || the fragility of nature’s balance
-#"cczd015a", # NEP-Skala: Natur kontrollieren  || rejection of exemptionalism
-#"cczd016a") # NEP-Skala: Umweltkatastrophe || possibility of an ecocrisis
-
-
-
-# the reality of limits to growth  2,7,12 - CHECK - RC 3
-# antianthropocentrism 3,8,13 - 3 und 8 RC 1
-# the fragility of nature’s balance  4,9,14 - 4 und 9 RC 2
-# rejection of exemptionalism  5,10,15
-# and the possibility of an ecocrisis  6,11,16
 
 # create a new columns
 neppca_single$Theorie <- NA
@@ -1222,9 +1155,6 @@ setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 # creating a single NEP Scale                             
 #--------------------------------------------------#
 
-q15d_ind <- dat[,q15d_ind]
-alpha(q15d_ind)
-
 # Interesting comment on what to take https://www.theanalysisfactor.com/index-score-factor-analysis/
 
 # Factor Scores
@@ -1236,7 +1166,7 @@ print.psych(pc4b, cut = 0.3)
 # now bind this only One Dimensional NEP factor to our original data frame
 dat <- cbind(dat, pc4b$scores)
 
-dat <- dat %>% rename("nep_single_fac" = "PC1")
+dat <- dat %>% rename("nep_single15" = "PC1")
 
 dat %>% select(q15d) %>% summarise_all(funs(sum(is.na(.))))
 
@@ -1245,34 +1175,32 @@ dat %>% select(q15d) %>% summarise_all(funs(sum(is.na(.))))
 
 
 # creating a sum over all the selected items
-dat$nep_sum <- dat %>% select(q15d_ind) %>%
+dat$nep_sum <- dat %>% select(q15d) %>%
   mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
 
 # counting the NAs
-dat$nep_nas <- apply(dat[,q15d_ind], MARGIN = 1, function(x) sum(is.na(x)))
+dat$nep_nas <- apply(dat[,q15d], MARGIN = 1, function(x) sum(is.na(x)))
 
 # if there are more than 50% NAs, set the scores to NA
 dat <- dat %>% mutate(nep_single15 = ifelse(nep_nas > round(length(q15d)/2), NA, nep_single15))
 
 # quick check
-dat[,c(q15d_ind, "nep_sum", "nep_nas")]
+dat[,c(q15d, "nep_sum", "nep_nas")]
 
 # if there are more than 50% Nas don´t calculate the mean, otherwise take the average
-dat <- dat %>% mutate(nep_ind = ifelse(nep_nas > round(length(q15d_ind)/2)  , NA, 
-                                  ifelse(nep_nas == 0, nep_sum/length(q15d_ind),
-                                  ifelse(nep_nas !=0, nep_sum/(length(q15d_ind)-nep_nas),NA))))
+dat <- dat %>% mutate(nep_ind = ifelse(nep_nas > round(length(q15d)/2)  , NA, 
+                                  ifelse(nep_nas == 0, nep_sum/length(q15d),
+                                  ifelse(nep_nas !=0, nep_sum/(length(q15d)-nep_nas),NA))))
 
-dat %>% select(q15d_ind,"nep_sum","nep_nas","nep_ind15")
+dat %>% select(q15d,"nep_sum","nep_nas","nep_ind")
 
-dat %>% select(nep_ind15, nep_ind, nep_scores, nep_single15)
+dat %>% select(nep_ind, nep_single15)
 
 
 #--------------------------------------------------#
 # reliability                             
 #--------------------------------------------------#
-rel_nep <- psych::alpha(q15d_ind)
-
-
+rel_nep <- psych::alpha(dat[,q15d])
 
 
 #--------------------------------------------------#
@@ -1304,8 +1232,7 @@ neppca_single[nrow(neppca_single) + 1,1] <- rel1
 
 
 # fill the new column with labels
-rownames(neppca_single) <- c(nep_labels,"Erklärte Varianz in %","Eigenwert","Cronbach's Alpha")
-colnames(neppca_single) <- c("Faktor1","Faktor2","Faktor3","Faktor4","Theorie")
+rownames(neppca_single) <- c(nep_labels,"Erklärte Varianz in Prozent","Eigenwert","Cronbach's Alpha")
 
 
 kable(neppca_single, 
@@ -1315,12 +1242,7 @@ kable(neppca_single,
       col.names = c("Faktor", linebreak("Item-Total\n Korrelation")), escape = FALSE) %>% 
   row_spec(15, hline_after = T) %>% 
   save_kable(paste0(latexpath, "appendix/neppca_single"), keep_tex = TRUE)
-
 setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
-
-
-
-
 
 
 #================================================#
@@ -1440,42 +1362,31 @@ dat <- dat %>% mutate(meat_know2 = ifelse(ceas108a == 7, NA, ceas108a))
 dat %>% group_by(ceas108a, meat_con) %>% summarise(n = n()) %>% spread(ceas108a, n) %>% janitor::adorn_percentages()*100
 
 
-dat %>% drop_na(ceas108a) %>% 
+meat_know <- dat %>% drop_na(ceas108a) %>% 
   group_by(meat_con, ceas108a) %>% 
   summarise(n = n()) %>% 
   spread(ceas108a, n) %>%
   select(-'0') %>% 
   adorn_totals(where = "col") %>% 
   adorn_percentages() %>% 
-  adorn_pct_formatting(digits = 0, affix_sign = FALSE) %>% 
-  adorn_title(col_name = linebreak("Treibhausgasausstoß\n Fleisch (Rang)"), row_name = "Fleischkonsum") %>% 
-  kable(format = "latex", booktabs = TRUE, escape = FALSE, 
-        caption = "Antwortverhalten für die Fragen Eingeschätzter Fleischkonsum und Einschätzung des Treibhausgasausstoßes von Fleisch (in %)", 
-        label = "gra_meat_know") %>%
+  adorn_pct_formatting(digits = 0, affix_sign = FALSE)
+
+colnames(meat_know) <- c("Fleischkonsum",as.character(seq(1,7,1)),"Total")
+
+meat_know %>% 
+  kable(format = "latex", booktabs = TRUE, escape = FALSE) %>% 
+  add_header_above(c(" " = 1,"Treibhausgasausstoß Fleisch (Rang)" = 7)) %>% 
   column_spec(2:8, width = "0.5cm") %>% 
-  save_kable(paste0(latexpath, "appendix/meat_know"), keep_tex = TRUE) #%>% 
+  save_kable(paste0(latexpath, "appendix/meatknow"), keep_tex = TRUE) 
+
+#%>% 
   #as_image(file = paste0(latexpath, "appendix/meat_know.png"))
 setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 
 
-
-#plot(magick::image_read("C:/Users/Ulli/Desktop/Thesis/thesis_small/graphics/descriptives/meat_know.png"))
-# kable(tmp, "latex", booktabs = T, caption = "Überblick der Variablen") %>% as_image(file = "./test1.png")
-# plot(magick::image_read("./test1.png"))
-#kable(dt, "latex", booktabs = T) 
-#df <- dat[1:10,vars]
-
-
-
-# Other Code that was tested (can be deleted if happy with results)
-#dat <- dat %>% mutate(meat_know3 = ifelse(ceas108a %in% c(1,2), 1,0))
-#dat <- dat %>% mutate(meat_know2 = ifelse(ceas108a %in% c(1), 1,0))
-
 table(dat$meat_know, useNA = "ifany")
-
 # quick check whether it worked as intended
 #dat %>% select(ceas108a, ceas109a, meat_know3) %>% filter(ceas109a == 1, meat_know3 == 1)
-
 #--------------------------------------------------#
 # Mensch und Umwelt Scale  (evtl. noch hinzufügbar)                        
 #--------------------------------------------------#
@@ -1841,7 +1752,12 @@ dat %>% select(job, job2, edu, edu2, uni, isced, isced_in)
 #================================================#
 # INITIAL EXPLORATION ####
 #================================================#
+# renaming for commitment
+dat <- dat %>% rename("ident_com_qual" = "ident_com",
+                      "ident_com_quant" = "envorga")
 
+dat$ident_com_quant <- ifelse(dat$ident_com_quant == 2, 0,
+                       ifelse(dat$ident_com_quant == 1, 1,NA))
 #================================================#
 # Descriptive Summary Statistics ####
 #================================================#
@@ -1856,6 +1772,8 @@ vars <- c("ei_single","ei_fac1","ei_fac2","ident_sal","ident_pro","ident_com",
 vars <- c("ei_ind","ident_sal","ident_pro","ident_com",
           "nep_single15", "meat_con","meat_concat", "meat_know", "meat_norm","age","sex","income_hh", "isced")
 
+vars <- c("ei_ind","ident_sal","ident_pro","ident_com_qual","ident_com_quant",
+          "nep_ind", "meat_con", "meat_know", "meat_norm","age","sex","income_hh","isced")
 
 #dt <- mtcars[1:5, 1:6]
 #kable(dt, "latex", booktabs = T) 
@@ -1872,86 +1790,155 @@ tmp <- do.call(data.frame,
                     median = apply(dat[,vars], 2, median, na.rm= TRUE),
                     min = apply(dat[,vars], 2, min, na.rm= TRUE),
                     max = apply(dat[,vars], 2, max, na.rm= TRUE),
-                    n = apply(dat[,vars], 2, length),
-                    na = apply(dat[,vars], 2, function(x) sum(is.na(x)))) )
+                    na = apply(dat[,vars], 2, function(x) sum(is.na(x)))))
 
 # changing names of columns/ rows
+varnames <- c("Umweltidentität",
+           "Umweltidentität Salience", 
+           "Umweltidentität Prominence", 
+           "Umweltidentität Commitment (qual.)", 
+           "Umweltidentität Commitment (quant.)",
+           "NEP",
+           "Fleischkonsum",
+           "Wissen Treibhausgasausstoß",
+           "Angemessenheit Fleischkonsum",
+           "Alter",
+           "Geschlecht",
+           "Haushaltseinkommen",
+           "ISCED-1997")
+
 names(tmp)
-rownames(tmp) <- c("Environmental Identity (Index)",
-                   "Environmental Identity (Scores)", 
-                   "Environmental Identity (Salience)")
+rownames(tmp) <- varnames
+
+colnames(tmp) <- c("MW","SA","MD","Min","Max","NA")
+
+# save as a Latex table
+tmp %>% 
+  kable(format = "latex", booktabs = TRUE, escape = FALSE, align = "c") %>% 
+  add_footnote(c("MW = Mittelwert, SA = Standardabweichung, MD = Median",
+                 "Min = Minimum, Max = Maximum, NA = Fehlend"), notation="none", escape = TRUE) %>% 
+  save_kable(paste0(latexpath, "descriptives/summary"), keep_tex = TRUE)
+
+setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 
 
-# check whether we like the style
-# library(magick)
-# kable(tmp, "latex", booktabs = T, caption = "Überblick der Variablen") %>% as_image(file = "./test1.png")
-# plot(magick::image_read("./test1.png"))
 
-
-# ALTERNATIVE
-# https://cran.r-project.org/web/packages/summarytools/vignettes/Recommendations-rmarkdown.html
-# I probably have to do this in Markdown to make it work in Latex later on
-# https://stackoverflow.com/questions/54215544/r-generate-pretty-plot-by-dfsummary/54758279#54758279
-library(summarytools)
-view(dfSummary(dat[,c("ei_ind")]), plain.ascii = FALSE, tmp.img.dir = "/tmp")
+# other descriptives
 
 #================================================#
 # Correlation Matrix####
 #================================================#
 
-dat[,vars]
-
-mcor <- round(cor(dat[,vars], use = "complete.obs"),2)
-
-upper<-mcor
-upper[upper.tri(mcor)]<-""
-upper<-as.data.frame(upper)
-upper
+# converting envorga to factor before transformation so 0 = "not in environmental organisation" and 1 = yes
+# changing the ident_com_quant to be more logical (0 = no member of environmental organisation, 1 = yes, member)
 
 
-kable(upper, "latex", booktabs = T, caption = "Überblick der Variablen") %>% as_image(file = "./test1.png")
-plot(magick::image_read("./test1.png"))
+# Correlation plot
+library(psych)
+cp <- corr.test(dat[,vars])
+r <- cp$r
+p <- cp$p
 
 
+#gr <- colorRampPalette(c("#B52127", "white", "#2171B5")) other color palette
+plotvars <- varnames
+plotvars[c(4,5,9)] <- c("Umweltidentität\n Commitment (quant.)","Umweltidentität\n Commitment (qual.)", "Angemessenheit\n Fleischkonsum")
 
-corstarsl <- function(x){
-  x <- as.matrix(x)
-  R <- Hmisc::rcorr(x)$r
-  p <- Hmisc::rcorr(x)$P
-  
-  ## define notions for significance levels; spacing is important.
-  mystars <- ifelse(p < .001, "***", ifelse(p < .01, "** ", ifelse(p < .05, "* ", " ")))
-  
-  ## trunctuate the matrix that holds the correlations to two decimal
-  R <- format(round(cbind(rep(-1.11, ncol(x)), R), 2))[,-1]
-  
-  ## build a new matrix that includes the correlations with their apropriate stars
-  Rnew <- matrix(paste(R, mystars, sep=""), ncol=ncol(x))
-  diag(Rnew) <- paste(diag(R), " ", sep="")
-  rownames(Rnew) <- colnames(x)
-  colnames(Rnew) <- paste(colnames(x), "", sep="")
-  
-  ## remove upper triangle
-  Rnew <- as.matrix(Rnew)
-  Rnew[upper.tri(Rnew, diag = TRUE)] <- ""
-  Rnew <- as.data.frame(Rnew)
-  
-  ## remove last column and return the matrix (which is now a data frame)
-  Rnew <- cbind(Rnew[1:length(Rnew)-1])
-  return(Rnew)
-}
+# now save the graph as pdf
+pdf(paste0(latexpath,"descriptives/varcors.pdf"), family = "CM Roman", paper= "USr", width = 11, height = 9)
+corPlot(r, numbers=TRUE, 
+        upper=FALSE, 
+        diag=TRUE, 
+        colors = TRUE, 
+        zlim = c(-1,1),
+        pval = p,
+        stars = TRUE, 
+        xlas = 2, 
+        adjust = TRUE,
+        cex = 0.8,
+        n = 20,
+        labels = plotvars,
+        cex.axis = 0.8)
+dev.off()
 
-corstarsl(dat[,vars])
+#system2("open", args = paste0(latexpath,"descriptives/varcors.pdf"))
 
-test <- xtable::xtable(corstarsl(dat[,vars]))
+
+### create a latex summary statistics table for the main variables
+
+test <- as.data.frame(unlist(apply(dat[,vars[c(11, 12, 13, 8, 9)]],MARGIN=2,table, useNA= "ifany")))
+
+test$total <- nrow(dat)
+names(test) <- c("var","total")
+
+test$per <- round(test$var/test$total,2)*100
+
+labels <- 
+c(
+"männlich",
+"weiblich",
+"Unter 900",
+"900 bis unter 1300",
+"1300 bis unter 1700",
+"1700 bis unter 2300",
+"2300 bis unter 3200",
+"3200 bis unter 4000",
+"4000 bis unter 5000",
+"5000 bis unter 6000",
+"6000 und mehr",
+"NA",
+"Level 1",
+"Level 2",
+"Level 3",
+"Level 4",
+"Level 5",
+"Weiß Bescheid",
+"Weiß nicht Bescheid",
+"NA",
+"An jedem Tag mehrmals",
+"An jedem Tag einmal",
+"An 5-6 Tagen pro Woche",
+"An 3-4 Tagen pro Woche",
+"An 1-2 Tagen pro Woche",
+"Seltener",
+"Gar nicht",
+"NA")
+
+test_matrix <- as.matrix(test)
+rownames(test_matrix) <- labels
+test_matrix <- test_matrix[,c("var","per")]
+
+kable(test_matrix, format = "latex", booktabs = TRUE, linesep = "", col.names = c("Häufigkeit","Prozent")) %>% 
+  pack_rows(index=c("Geschlecht" = 2, 
+                    "Haushaltseinkommen in Euro" = 10, 
+                    "ISCED-1997" = 5, 
+                    "Wissen Treibhausgasausstoß" = 3, 
+                    "Angemessenheit Fleischkonsum" = 8)) %>% 
+  save_kable(paste0(latexpath, "descriptives/controlvarssummary"), keep_tex = TRUE)
+setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
+
+system2("open", args = "test.png")
+
+#   as_image(file = "./test1.png")
+plot(magick::image_read("test.png"))
+
+sex <-  dat %>% 
+  group_by(sex) %>% 
+  summarise(n = n()) %>% 
+  adorn_percentages(denominator = "col")
+
+isced <- dat %>% 
+  group_by(isced) %>% 
+  summarise(n = n()) %>% 
+  adorn_percentages(denominator = "col")
+
+
 
 
 
 #================================================#
 # Crosstabs ####
 #================================================#
-
-
 dat %>% group_by(meat_con,ceas108a) %>% 
   summarise(n = n()) %>% 
   spread(ceas108a, n) %>%
@@ -2011,13 +1998,6 @@ dat %>% group_by(meat_norm) %>%
 
 dat %>% group_by(meat_con) %>% summarise(mean = mean(ident_pro, na.rm = TRUE), 
                                          know = mean(meat_know2, na.rm = TRUE)) 
-
-
-
-dat %>% tabyl(meat_con, ceas108a)
-
-#%>% kable("latex", booktabs = T)
-
 
 
 #================================================#
@@ -2175,11 +2155,6 @@ df2$meat_con=as.factor(df2$meat_con)
 head(df2)
 
 
-
-
-
-
-
 ggplot(df2 %>% tidyr::drop_na(meat_know), aes(x=ident_pro, y=meat_con, group=meat_know, color=meat_know)) + 
   geom_line() +
   geom_point() +
@@ -2197,12 +2172,11 @@ backup <- dat
 
 dat$meat_know <- factor(dat$meat_know, levels = c(0:1), labels = c("don´t know", "know"))
 dat$sex <- factor(dat$sex, levels = c(0:1), labels = c("männlich", "weiblich"))
-dat$envorga <- factor(dat$envorga, levels = c(2,1), labels = c("Kein Mitglied", "Mitglied"))
+dat$ident_com_quant <- factor(dat$ident_com_quant, levels = c(0,1), labels = c("Kein Mitglied", "Mitglied"))
+
 #dat$meat_pop_more <- as.factor(dat$meat_pop_more, levels = c(0:1), labels = c("Bev_weniger", "Bev_mehr"))
 
-# renaming for commitment
-dat <- dat %>% rename("ident_com_qual" = "ident_com",
-                      "ident_com_quant" = "envorga")
+
 
 
 table(dat$meat_norm, dat$meat_con, deparse.level = 2)
@@ -2212,6 +2186,10 @@ table(dat$meat_norm, dat$meat_con, deparse.level = 2)
 library(car)
 library(lm.beta)
 library(stargazer)
+
+dat %>% group_by(sex) %>% summarise(mean = n())
+
+
 
 
 ### Recoding work
