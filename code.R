@@ -11,9 +11,6 @@
 #================================================#
 # Loading Packages ####
 #================================================#
-
-
-
 library(haven)
 library(dplyr)
 library(tidyr)
@@ -24,7 +21,9 @@ library(ggplot2)
 library(ggstatsplot)
 
 library(extrafont)
-
+library(tikzDevice)
+library(psych)
+library(corrr)
 
 options(digits = 2)
 options(max.print = 100)
@@ -370,8 +369,6 @@ dat[, q17ident_rec] <- lapply(dat[, q17ident_rec], function(i)
 # creating descriptives                             
 #--------------------------------------------------#
 
-q17ident
-library(tikzDevice)
 
 # create the labels
 labels <- c("Einklang (1)", "Verbunden (2)", "Besorgt (3)", "Beschützend (4)", "Unterlegen (5)", 
@@ -384,9 +381,8 @@ labels <- c("Einklang (1)", "Verbunden (2)", "Besorgt (3)", "Beschützend (4)", 
 # Creating a graph for the means of the environmental identity                             
 #--------------------------------------------------#
 
-
 # now calculate the means and the labels
-std <- function(x) sd(x)/sqrt(length(x))
+# function to add standard errors if desired std <- function(x) sd(x)/sqrt(length(x))
 
 eichart <- dat %>% 
   select(q17ident) %>%
@@ -541,12 +537,6 @@ shapiro.test(residuals)
 pc3 <- principal(dat[,q17ident], nfactors = 2, rotate = "oblimin", scores = TRUE)
 print.psych(pc3, cut = 0.3, sort = TRUE)
 
-
-#plot(magick::image_read("C:/Users/Ulli/Desktop/Thesis/thesis_small/graphics/descriptives/meat_know.png"))
-
-
-kable(print.psych(pc3, cut = 0.3, sort = TRUE), )
-
 # see: http://hosted.jalt.org/test/PDF/Brown31.pdf
 # Interpretation of Factor Analysis tutorial: https://data.library.virginia.edu/getting-started-with-factor-analysis/
 
@@ -596,10 +586,11 @@ eipca[nrow(eipca) + 1,] <- var
 eipca[nrow(eipca) + 1,] <- eig
 eipca[nrow(eipca) + 1,] <- c(rel1,rel2)
 
-
+# assign row and column labels
 rownames(eipca) <- c(labels[-5],"Erklärte Varianz in %","Eigenwert","Alpha")
 colnames(eipca) <- c("Faktor1","Faktor2")
 
+# create the table and save it
 kable(eipca, format = "latex", booktabs = TRUE, digits = 2) %>% 
   row_spec(10, hline_after = T) %>% 
   save_kable(paste0(latexpath, "appendix/eipca"), keep_tex = TRUE)
@@ -628,10 +619,6 @@ dat$ei_sum <- dat %>% select(all_of(q17ident)) %>%
   
 # calculate the NAs for all the variables
 dat$ei_nas <- apply(dat[,q17ident], MARGIN = 1, function(x) sum(is.na(x)))
-
-
-dat[,c("ei_sum","ei_nas")]
-table(dat$ei_nas)
 
 
 # if there are more than 50% Nas don´t calculate the mean, otherwise take the average
@@ -682,10 +669,11 @@ eipca_single[nrow(eipca_single) + 1,] <- var
 eipca_single[nrow(eipca_single) + 1,] <- eig
 eipca_single[nrow(eipca_single) + 1,] <- rel1
 
-
+# create row and column labels
 rownames(eipca_single) <- c(labels[-5],"Erklärte Varianz in %","Eigenwert","Alpha")
 colnames(eipca_single) <- c("Umweltidentität")
 
+# create the table and save it
 kable(eipca_single, format = "latex", booktabs = TRUE, digits = 2) %>% 
   row_spec(10, hline_after = T) %>% 
   save_kable(paste0(latexpath, "appendix/eipca_single"), keep_tex = TRUE)
@@ -810,42 +798,40 @@ ifelse(dat$meat_con == 7, 1,NA)))))))
 
 # overview of cases
 
-# Creating a second meat_consumption variable that is easier to interpret
+# Creating a second meat_consumption variable that is easier to interpret 
+#(optional if later in analysis we need to rearrange our meat consumption variable)
 
-dat %>% group_by(meat_con) %>% 
-  summarise(mean = mean(ei_single, na.rm = TRUE), n = n()) %>% 
-  mutate(per = n / sum(n)*100) %>% 
-  mutate(cum = cumsum(per))
-
-dat <- dat %>% mutate(meat_concat = ifelse(meat_con %in% c(1,2), 1,
-                                    ifelse(meat_con %in% c(3,4), 2,
-                                    ifelse(meat_con %in% c(5,6), 3,
-                                    ifelse(meat_con %in% c(7), 4, NA)))))
-
-
-dat %>% group_by(meat_concat) %>% 
-  summarise(mean = mean(ei_single, na.rm = TRUE), n = n()) %>% 
-  mutate(per = n / sum(n)*100) %>% 
-  mutate(cum = cumsum(per))
-
-dat <- dat %>% mutate(meat_concat2 = ifelse(meat_con %in% c(1,2), 1,
-                                     ifelse(meat_con %in% c(3,4), 2,
-                                     ifelse(meat_con %in% c(5), 3,
-                                     ifelse(meat_con %in% c(6,7), 4, NA)))))
-
-dat %>% group_by(meat_concat2) %>% 
-  summarise(mean = mean(ei_single, na.rm = TRUE), n = n()) %>% 
-  mutate(per = n / sum(n)*100) %>% 
-  mutate(cum = cumsum(per))
+# dat %>% group_by(meat_con) %>% 
+#   summarise(mean = mean(ei_single, na.rm = TRUE), n = n()) %>% 
+#   mutate(per = n / sum(n)*100) %>% 
+#   mutate(cum = cumsum(per))
+# 
+# dat <- dat %>% mutate(meat_concat = ifelse(meat_con %in% c(1,2), 1,
+#                                     ifelse(meat_con %in% c(3,4), 2,
+#                                     ifelse(meat_con %in% c(5,6), 3,
+#                                     ifelse(meat_con %in% c(7), 4, NA)))))
+# 
+# 
+# dat %>% group_by(meat_concat) %>% 
+#   summarise(mean = mean(ei_single, na.rm = TRUE), n = n()) %>% 
+#   mutate(per = n / sum(n)*100) %>% 
+#   mutate(cum = cumsum(per))
+# 
+# dat <- dat %>% mutate(meat_concat2 = ifelse(meat_con %in% c(1,2), 1,
+#                                      ifelse(meat_con %in% c(3,4), 2,
+#                                      ifelse(meat_con %in% c(5), 3,
+#                                      ifelse(meat_con %in% c(6,7), 4, NA)))))
+# 
+# dat %>% group_by(meat_concat2) %>% 
+#   summarise(mean = mean(ei_single, na.rm = TRUE), n = n()) %>% 
+#   mutate(per = n / sum(n)*100) %>% 
+#   mutate(cum = cumsum(per))
 
 
 
 #--------------------------------------------------#
 # creating a Latex Table
 #--------------------------------------------------#
-
-hist(dat$meat_con)
-
 # create labels for the plot
 labels <- c(
 "An jedem Tag\n mehrmals",
@@ -992,7 +978,11 @@ apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
 # let´s kick variables that don´t correlate with any others (< 0.3) and repeat the step above
 # q15d <- q15d[!(q15d %in% c("cczd007a","cczd002a","cczd010a"))]
 
-# STEP 1
+
+#--------------------------------------------------#
+# STEP 1                             
+#--------------------------------------------------#
+
 
 # Inspect correlation matrix
 
@@ -1002,9 +992,7 @@ round(raq_matrix,3)
 # Low correlations by variable
 
 correlations <- as.data.frame(raq_matrix)
-# Correlation plot
-
-library(psych)
+# Correlation plot 
 corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations between variables")
 # Check number of low correlations adn mean correlaiton per variable
 
@@ -1013,7 +1001,7 @@ apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correl
 apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
 
 # inter item total correlation
-library(corrr)
+
 cors <- dat[,q15d]
 cors$score <- rowMeans(cors)
 item_total <- cors %>% correlate() %>% focus(score)
@@ -1021,24 +1009,22 @@ mean(item_total$score)
 max(item_total$score)
 
 # Conduct Bartlett's test (p should be < 0.05)
-
 cortest.bartlett(raq_matrix, n = nrow(dat))
+
 # Count number of high correlations for each variable
-
 apply(abs(correlations) > 0.8, 1, sum, na.rm = TRUE)
-# Compute determinant (should be > 0.00001)
 
+# Compute determinant (should be > 0.00001)
 det(raq_matrix)
 det(raq_matrix) > 0.00001
 
 # Compute MSA statstic (should be > 0.5)
-
 KMO(dat[,q15d])
 
-# STEP 2
 
-# Deriving factors
-
+#--------------------------------------------------#
+# STEP 2                             
+#--------------------------------------------------#
 
 # Find the number of factors to extract
 pc1b <- principal(dat[,q15d], nfactors = 1, rotate = "none")
@@ -1074,13 +1060,13 @@ sum(large_res)
 sum(large_res)/nrow(residuals)
 
 # Test if residuals are approximately normally distributed
-
-hist(residuals)
-qqnorm(residuals) 
-qqline(residuals)
 shapiro.test(residuals)
 
-# STEP 3
+
+#--------------------------------------------------#
+# STEP 3                             
+#--------------------------------------------------#
+
 # Orthogonal factor rotation without the 07 item, which loads to high on other factors
 pc3c <- principal(dat[,q15d], nfactors = 4, rotate = "varimax")
 pc3c
@@ -1193,9 +1179,6 @@ dat <- dat %>% mutate(nep_ind = ifelse(nep_nas > round(length(q15d)/2)  , NA,
                                   ifelse(nep_nas !=0, nep_sum/(length(q15d)-nep_nas),NA))))
 
 dat %>% select(q15d,"nep_sum","nep_nas","nep_ind")
-
-dat %>% select(nep_ind, nep_single15)
-
 
 #--------------------------------------------------#
 # reliability                             
@@ -1313,11 +1296,6 @@ ifelse(dat$meat_norm == 7, 1,NA)))))))
 # - means that people eat less meat than what they think is appropiate
 dat <- dat %>% mutate(meat_norm_diff = meat_con - meat_norm)
 
-
-dat %>% select(meat_con, meat_norm, meat_norm_diff)
-
-table(dat$meat_norm, useNA = "ifany")
-
 # Recoding the variable
 #4:  taeglich
 #3:  3-6 Tage/Woche
@@ -1362,6 +1340,11 @@ dat <- dat %>% mutate(meat_know2 = ifelse(ceas108a == 7, NA, ceas108a))
 dat %>% group_by(ceas108a, meat_con) %>% summarise(n = n()) %>% spread(ceas108a, n) %>% janitor::adorn_percentages()*100
 
 
+#--------------------------------------------------#
+# Creating Latex table
+#--------------------------------------------------#
+
+# create data frame
 meat_know <- dat %>% drop_na(ceas108a) %>% 
   group_by(meat_con, ceas108a) %>% 
   summarise(n = n()) %>% 
@@ -1371,20 +1354,19 @@ meat_know <- dat %>% drop_na(ceas108a) %>%
   adorn_percentages() %>% 
   adorn_pct_formatting(digits = 0, affix_sign = FALSE)
 
+# assign column labels
 colnames(meat_know) <- c("Fleischkonsum",as.character(seq(1,7,1)),"Total")
 
+# creat the table and save it
 meat_know %>% 
   kable(format = "latex", booktabs = TRUE, escape = FALSE) %>% 
   add_header_above(c(" " = 1,"Treibhausgasausstoß Fleisch (Rang)" = 7)) %>% 
   column_spec(2:8, width = "0.5cm") %>% 
   save_kable(paste0(latexpath, "appendix/meatknow"), keep_tex = TRUE) 
 
-#%>% 
-  #as_image(file = paste0(latexpath, "appendix/meat_know.png"))
+# set wd again, because somehow the function changes it
 setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 
-
-table(dat$meat_know, useNA = "ifany")
 # quick check whether it worked as intended
 #dat %>% select(ceas108a, ceas109a, meat_know3) %>% filter(ceas109a == 1, meat_know3 == 1)
 #--------------------------------------------------#
@@ -1502,8 +1484,7 @@ dat$sex <- ifelse(dat$sex == 2,1,
 #--------------------------------------------------#
 # create a new variable for age                             
 #--------------------------------------------------#
-dat$age <- 2020-dat$a11d056b
-
+dat$age <- as.numeric(substr(Sys.time(),1,4))-dat$a11d056b
 
 #--------------------------------------------------#
 # Income (Household and Personal)                             
@@ -1694,7 +1675,6 @@ ifelse(is.na(job) & is.na(edu), NA, NA))))))
 #9 Anderer Schulabschluss
 #Other degree
 
-a11d086b
 
 #1 Noch in beruflicher Ausbildung
 #In vocational training
@@ -1772,7 +1752,7 @@ vars <- c("ei_single","ei_fac1","ei_fac2","ident_sal","ident_pro","ident_com",
 vars <- c("ei_ind","ident_sal","ident_pro","ident_com",
           "nep_single15", "meat_con","meat_concat", "meat_know", "meat_norm","age","sex","income_hh", "isced")
 
-vars <- c("ei_ind","ident_sal","ident_pro","ident_com_qual","ident_com_quant",
+vars <- c("ei_ind","ident_pro","ident_sal","ident_com_qual","ident_com_quant",
           "nep_ind", "meat_con", "meat_know", "meat_norm","age","sex","income_hh","isced")
 
 #dt <- mtcars[1:5, 1:6]
@@ -1794,8 +1774,8 @@ tmp <- do.call(data.frame,
 
 # changing names of columns/ rows
 varnames <- c("Umweltidentität",
-           "Umweltidentität Salience", 
-           "Umweltidentität Prominence", 
+              "Umweltidentität Prominence",
+           "Umweltidentität Salience",
            "Umweltidentität Commitment (qual.)", 
            "Umweltidentität Commitment (quant.)",
            "NEP",
@@ -1807,9 +1787,10 @@ varnames <- c("Umweltidentität",
            "Haushaltseinkommen",
            "ISCED-1997")
 
-names(tmp)
+# assign new rownames
 rownames(tmp) <- varnames
 
+# assign new colnames
 colnames(tmp) <- c("MW","SA","MD","Min","Max","NA")
 
 # save as a Latex table
@@ -1819,6 +1800,7 @@ tmp %>%
                  "Min = Minimum, Max = Maximum, NA = Fehlend"), notation="none", escape = TRUE) %>% 
   save_kable(paste0(latexpath, "descriptives/summary"), keep_tex = TRUE)
 
+# set wd again
 setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 
 
@@ -1834,7 +1816,6 @@ setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 
 
 # Correlation plot
-library(psych)
 cp <- corr.test(dat[,vars])
 r <- cp$r
 p <- cp$p
@@ -1861,17 +1842,17 @@ corPlot(r, numbers=TRUE,
         cex.axis = 0.8)
 dev.off()
 
+# command to check the file created
 #system2("open", args = paste0(latexpath,"descriptives/varcors.pdf"))
 
 
 ### create a latex summary statistics table for the main variables
+stat <- as.data.frame(unlist(apply(dat[,vars[c(11, 12, 13, 8, 9)]],MARGIN=2,table, useNA= "ifany")))
 
-test <- as.data.frame(unlist(apply(dat[,vars[c(11, 12, 13, 8, 9)]],MARGIN=2,table, useNA= "ifany")))
+stat$total <- nrow(dat)
+names(stat) <- c("var","total")
 
-test$total <- nrow(dat)
-names(test) <- c("var","total")
-
-test$per <- round(test$var/test$total,2)*100
+stat$per <- round(stat$var/stat$total,2)*100
 
 labels <- 
 c(
@@ -1904,11 +1885,11 @@ c(
 "Gar nicht",
 "NA")
 
-test_matrix <- as.matrix(test)
-rownames(test_matrix) <- labels
-test_matrix <- test_matrix[,c("var","per")]
+stat_matrix <- as.matrix(stat)
+rownames(stat_matrix) <- labels
+stat_matrix <- stat_matrix[,c("var","per")]
 
-kable(test_matrix, format = "latex", booktabs = TRUE, linesep = "", col.names = c("Häufigkeit","Prozent")) %>% 
+kable(stat_matrix, format = "latex", booktabs = TRUE, linesep = "", col.names = c("Häufigkeit","Prozent")) %>% 
   pack_rows(index=c("Geschlecht" = 2, 
                     "Haushaltseinkommen in Euro" = 10, 
                     "ISCED-1997" = 5, 
@@ -1917,24 +1898,7 @@ kable(test_matrix, format = "latex", booktabs = TRUE, linesep = "", col.names = 
   save_kable(paste0(latexpath, "descriptives/controlvarssummary"), keep_tex = TRUE)
 setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 
-system2("open", args = "test.png")
-
-#   as_image(file = "./test1.png")
-plot(magick::image_read("test.png"))
-
-sex <-  dat %>% 
-  group_by(sex) %>% 
-  summarise(n = n()) %>% 
-  adorn_percentages(denominator = "col")
-
-isced <- dat %>% 
-  group_by(isced) %>% 
-  summarise(n = n()) %>% 
-  adorn_percentages(denominator = "col")
-
-
-
-
+#system2("open", args = "test.png")
 
 #================================================#
 # Crosstabs ####
@@ -1957,22 +1921,14 @@ dat %>% group_by(meat_con) %>%
 
 
 # environmental identity X meat consumption
-
 dat %>% group_by(meat_con) %>% summarise(mean = mean(ei_single, na.rm = TRUE), n = n())
 
-
-# environmental identity x prominence of identity
-
-dat %>% 
-
 # environmental identity X meat consumption for cases with high prominence
-
 dat %>% group_by(meat_con) %>% filter(ident_pro > 3) %>%  summarise(mean = mean(ei_single, na.rm = TRUE), n = n())
 
 # Angemessenheit Fleischkonsum (vor Hintergrund Treibhausgas) X meat_consumption
 dat %>% group_by(meat_con) %>% summarise_at(.vars = c("meat_norm","meat_norm_diff","ident_pro", "ident_sal", "ei_single"),
                                             .funs = mean, na.rm = TRUE)
-
 
 # amount of people who have a strong identity + high prominence and salience
 x <- dat %>% 
@@ -1995,30 +1951,10 @@ dat %>% group_by(meat_norm) %>%
 
 
 # high prominence and knowledge
-
 dat %>% group_by(meat_con) %>% summarise(mean = mean(ident_pro, na.rm = TRUE), 
                                          know = mean(meat_know2, na.rm = TRUE)) 
 
 
-#================================================#
-# Calculations ####
-#================================================#
-
-### Check out whether the meat consumption is reduced when there is a high
-# identity and it is prominent
-
-dat %>% 
-  group_by(meat_con) %>% 
-  filter(ident_pro > 3 & ident_sal > 3 & ident_com > 3) %>% 
-  summarise(ident = mean(ei_single, na.rm = TRUE),
-            nep = mean(nep_single15, na.rm = TRUE),
-            count = length(ei_single))
-
-dat %>% 
-  group_by(meat_con) %>% 
-  filter(ident_pro < 3 & ident_sal < 3) %>% 
-  summarise(mean = mean(ei_single, na.rm = TRUE),
-            count = length(ei_single))
 
 #================================================#
 # INFERENCIAL STATISTICS ####
@@ -2124,52 +2060,25 @@ dat %>%
 # ggplot(dat %>% drop_na(meat_know), aes(fill=meat_know, y=ident_pro, x=factor(meat_con))) + 
 #   geom_boxplot()
 
-
-  
-
-#+++++++++++++++++++++++++
-# Function to calculate the mean and the standard deviation
-# for each group
-#+++++++++++++++++++++++++
-# data : a data frame
-# varname : the name of a column containing the variable
-#to be summariezed
-# groupnames : vector of column names to be used as
-# grouping variables
-data_summary <- function(data, varname, groupnames){
-  summary_func <- function(x, col){
-    c(mean = mean(x[[col]], na.rm=TRUE),
-      sd = sd(x[[col]], na.rm=TRUE))
-  }
-  data_sum<-plyr::ddply(data, groupnames, .fun=summary_func,
-                  varname)
-  data_sum <- plyr::rename(data_sum, c("mean" = varname))
-  return(data_sum)
-}
-
-df2 <- data_summary(dat, varname="ident_pro", 
-                    groupnames=c("meat_con","meat_know"))
-
-# Convert dose to a factor variable
-df2$meat_con=as.factor(df2$meat_con)
-head(df2)
-
-
-ggplot(df2 %>% tidyr::drop_na(meat_know), aes(x=ident_pro, y=meat_con, group=meat_know, color=meat_know)) + 
-  geom_line() +
-  geom_point() +
-  geom_errorbar(aes(ymin=meat_con-sd, ymax=meat_con+sd), width=.2,
-                position=position_dodge(0.05))
-
-
-
-# variable meat_know
-
-# creating a backup 
-backup <- dat
+### Recoding work
+# dat <- dat %>% mutate(ident_pro_rec = ifelse(ident_pro <= mean(ident_pro, na.rm = T), 0,
+#                                       ifelse(ident_pro > mean(ident_pro, na.rm = T), 1, NA)))
+# 
+# 
+# 
+# dat <- dat %>% mutate(ident_pro_rec2 = ifelse(ident_pro >= 4.2, 4,
+#                                        ifelse(ident_pro >= 3.3, 3,
+#                                        ifelse(ident_pro >= 3.0, 2,
+#                                        ifelse(ident_pro < 3.0, 1, NA)))))
+# 
+# dat$ident_pro_rec2 <- factor(dat$ident_pro_rec2, levels = c(1:4), labels = c("sehr niedrig", "niedrig", "hoch", "sehr hoch"))
+# 
+# dat <- dat %>% mutate(ident_pro_rec = ifelse(ident_pro <= mean(ident_pro, na.rm = T), 0,
+#                                       ifelse(ident_pro > mean(ident_pro, na.rm = T), 1, NA)))
+# 
+# dat$ident_pro_rec <- factor(dat$ident_pro_rec, levels = c(0:1), labels = c("lower", "higher"))
 
 # creating factors
-
 dat$meat_know <- factor(dat$meat_know, levels = c(0:1), labels = c("don´t know", "know"))
 dat$sex <- factor(dat$sex, levels = c(0:1), labels = c("männlich", "weiblich"))
 dat$ident_com_quant <- factor(dat$ident_com_quant, levels = c(0,1), labels = c("Kein Mitglied", "Mitglied"))
@@ -2177,103 +2086,75 @@ dat$ident_com_quant <- factor(dat$ident_com_quant, levels = c(0,1), labels = c("
 #dat$meat_pop_more <- as.factor(dat$meat_pop_more, levels = c(0:1), labels = c("Bev_weniger", "Bev_mehr"))
 
 
+#--------------------------------------------------#
+# Save the dataset for the regression                             
+#--------------------------------------------------#
+# save my complete data file
+save(dat, file = "dat.Rda")
 
+# load my vector for the regression vars
+saveRDS(vars, "vars.rds")
+saveRDS(varnames, "varnames.rds")
+saveRDS(latexpath, "latexpath.rds")
+# load my vector for the variable names
 
-table(dat$meat_norm, dat$meat_con, deparse.level = 2)
 #================================================#
 # REGRESSION ####
 #================================================#
+
+
+#--------------------------------------------------#
+# load Regression specific libraries
+#--------------------------------------------------#
 library(car)
 library(lm.beta)
 library(stargazer)
 
-dat %>% group_by(sex) %>% summarise(mean = n())
+# load all of them in my new environment
+load("dat.Rda")
+vars <- readRDS("vars.rds")
+varnames <- readRDS("varnames.rds")
+latexpath <- readRDS("latexpath.rds")
 
-
-
-
-### Recoding work
-dat <- dat %>% mutate(ident_pro_rec = ifelse(ident_pro <= mean(ident_pro, na.rm = T), 0,
-                                      ifelse(ident_pro > mean(ident_pro, na.rm = T), 1, NA)))
-
-
-
-dat <- dat %>% mutate(ident_pro_rec2 = ifelse(ident_pro >= 4.2, 4,
-                                       ifelse(ident_pro >= 3.3, 3,
-                                       ifelse(ident_pro >= 3.0, 2,
-                                       ifelse(ident_pro < 3.0, 1, NA)))))
-
-dat$ident_pro_rec2 <- factor(dat$ident_pro_rec2, levels = c(1:4), labels = c("sehr niedrig", "niedrig", "hoch", "sehr hoch"))
-
-dat <- dat %>% mutate(ident_pro_rec = ifelse(ident_pro <= mean(ident_pro, na.rm = T), 0,
-                                      ifelse(ident_pro > mean(ident_pro, na.rm = T), 1, NA)))
-
-dat$ident_pro_rec <- factor(dat$ident_pro_rec, levels = c(0:1), labels = c("lower", "higher"))
-
-### graphics
-dat %>% 
-  filter(!is.na(meat_know)) %>% 
-  ggplot(aes(fill=meat_know, y=ei_ind, x=factor(meat_concat)))+
-        geom_boxplot()
-
-
-dat %>% group_by(meat_con) %>% summarise(mean(ident_pro, na.rm= TRUE))
-
+# erase all cases where we don´t have complete observations
+# Note: We do this to make all the regressions comparable
+dat <- dat[complete.cases(dat[,vars]), vars]
 
 
 #--------------------------------------------------#
 # Model 1: Identity 
 #--------------------------------------------------#
-
 reg1 <- lm(meat_con ~ ei_ind , data = dat)
-summary(reg1)
+reg1_beta <- lm.beta::lm.beta(reg1)
 
-dat %>% 
-  group_by(ei_ind) %>% 
-  summarise(meat_con = mean(meat_concat, na.rm = TRUE)) %>% 
-  ggplot(aes(x = ei_ind, y = meat_con)) + geom_point() + geom_smooth(method = "lm")
-
-
-dat %>% 
-  group_by(nep_ind15) %>% 
-  summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% 
-  ggplot(aes(x = nep_ind15, y = meat_con)) + geom_point() + geom_smooth(method = "lm")
-
-plot(reg1, 1)
-plot(reg1, 2)
-shapiro.test(resid(reg6))
-plot(reg1, 3)
-plot(reg1, 4)
+# regression plot
+# dat %>% 
+#   group_by(ei_ind) %>% 
+#   summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% 
+#   ggplot(aes(x = ei_ind, y = meat_con)) + geom_point() + geom_smooth(method = "lm")
 
 #--------------------------------------------------#
 # Model 2: Identity + Identity Prominence
 #--------------------------------------------------#
-reg2<-update(reg1, .~. + ident_pro + ident_sal + ident_com_qual + ident_com_quant)
-summary(reg2)
+reg2 <- update(reg1, .~. + ident_pro + ident_sal + ident_com_qual + ident_com_quant)
 
-
-dat %>% 
-  tidyr::drop_na(ident_pro_rec2) %>% 
-  group_by(ident_pro_rec2, ei_ind) %>% 
-  summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% 
-  ggplot(aes(x = ei_ind, y = meat_con, group = ident_pro_rec2, color = ident_pro_rec2)) + geom_point() + geom_line()
-
-
+# dat %>% 
+#   tidyr::drop_na(ident_pro_rec2) %>% 
+#   group_by(ident_pro_rec2, ei_ind) %>% 
+#   summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% 
+#   ggplot(aes(x = ei_ind, y = meat_con, group = ident_pro_rec2, color = ident_pro_rec2)) + geom_point() + geom_line()
 
 #--------------------------------------------------#
 # Model 2: Socials
 #--------------------------------------------------#
-reg4 <- update(reg2, .~.  + meat_know + meat_norm + nep_ind)
-summary(reg4)
-
-dat %>% 
-  tidyr::drop_na(c("meat_norm", "meat_know")) %>% 
-  group_by(meat_norm, meat_know) %>% 
-  summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% 
-  ggplot(aes(x = meat_norm, y = meat_con, group = meat_know, color = meat_know)) + geom_point() + geom_line()
+reg3 <- update(reg2, .~.  + nep_ind + meat_know + meat_norm)
 
 
-
+# dat %>% 
+#   tidyr::drop_na(c("meat_norm", "meat_know")) %>% 
+#   group_by(meat_norm, meat_know) %>% 
+#   summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% 
+#   ggplot(aes(x = meat_norm, y = meat_con, group = meat_know, color = meat_know)) + geom_point() + geom_line()
 
 
 # Interaction Effekt Meat Norm
@@ -2292,279 +2173,203 @@ dat %>%
 #reg4 <- update(reg3, .~. + strom_öko + lm_reg + lm_bio)
 #summary(reg4)
 
-# Model 5:
-reg5 <- update(reg4, .~.  + sex + age + isced + income_hh)
+
+#--------------------------------------------------#
+# Model 4 Control Variables                             
+#--------------------------------------------------#
+reg4 <- update(reg3, .~. + age + sex + income_hh + isced)
+summary(reg4)
+reg4_beta <- lm.beta::lm.beta(reg4)
+df <- as.data.frame(reg4_beta$standardized.coefficients)
+
+
+#--------------------------------------------------#
+# Model 5 Interaction                             
+#--------------------------------------------------#
+reg5 <- update(reg4, .~. + ident_pro:meat_know)
 summary(reg5)
-lm.beta::lm.beta(reg5)
-
-reg5_int <- update(reg5, .~. + ident_pro:meat_know)
-summary(reg5_int)
-lm.beta::lm.beta(reg5_int)
-
-stargazer(reg1, reg2, reg4, reg5, reg5_int, type = "text", single.row = TRUE, omit.stat=c("LL","ser","f"))
 
 
+# check the interaction
+emmeans::emtrends(reg5, ~ meat_know, var="ident_pro")
+emmeans::emtrends(reg5, pairwise ~ meat_know, var="ident_pro")
+
+# create relevant information for the graph
+mylist <- list(ident_pro=seq(1,5,by=0.25))
+
+# raw data of the plot
+plot.df <- emmeans::emmip(reg5, meat_know ~ ident_pro, at=mylist, plotit = FALSE)
+
+# get the interaction plot
+pdf(paste0(latexpath,"descriptives/interaction.pdf"), width = 8, height = 5, family = "CM Roman")
+emmeans::emmip(reg5, meat_know ~ ident_pro, at=mylist, CIs=TRUE) + 
+  labs(x = "Wichtigkeit der Umweltidentität\n", y = "Fleischkonsum") +
+  theme_minimal() + ylim(c(4,6))
+dev.off()
 
 
-reg6 <- update(reg4, .~. + nep_ind15 + sex + age + isced + income_hh)
-summary(reg6)
+
+# test
+# dat$meat_norm_fac <- as.factor(dat$meat_norm)
+# 
+# emmeans::emtrends(reg5, ~ meat_norm, var="ident_pro")
+# emmeans::emmip(reg5, meat_norm_fac ~ ident_pro, at=mylist, CIs=TRUE) + 
+#   labs(x = "Wichtigkeit der Umweltidentität\n", y = "Fleischkonsum") +
+#   theme_minimal() + ylim(c(4,6))
+
+#--------------------------------------------------#
+# Regression Output                             
+#--------------------------------------------------#
+stargazer(reg1, reg2, reg3, reg4, reg5,
+          single.row = FALSE, 
+          ci = TRUE,
+          ci.separator = " - ",
+          digits = 2,
+          initial.zero = TRUE,
+          omit.stat=c("LL","ser","f"),
+          star.cutoffs = c(0.05, 0.01, 0.001),
+          covariate.labels = c(varnames[-7],"Interaktion (Prominence:Wissen)"),
+          dep.var.caption  = "Abhängige Variable",
+          dep.var.labels   = "Eingesch{\"a}tzter Fleischkonsum",
+          type = "text",
+          align = TRUE,
+          column.sep.width = "0.1pt")
+
+
+# coef = list(reg1$coefficients, 
+#             reg1_beta$standardized.coefficients)
+
+varnames[c(8,11)] <- c("Wissen Treibhausgasausstoß - Ja","Geschlecht - weiblich")
+
+# grab the content of the stargazer output
+table <- capture.output({ stargazer(reg1, reg2, reg3, reg4, reg5,
+                    single.row = TRUE, 
+                    ci = TRUE,
+                    ci.separator = " - ",
+                    digits = 2,
+                    initial.zero = TRUE,
+                    omit.stat=c("LL","ser","f"),
+                    star.cutoffs = c(0.05, 0.01, 0.001),
+                    covariate.labels = c(varnames[-7],"Interaktion (Prominence:Wissen)"),
+                    dep.var.caption  = "Abhängige Variable",
+                    dep.var.labels   = "Eingesch{\"a}tzter Fleischkonsum",
+                    type = "latex",
+                    align = TRUE,
+                    column.sep.width = "0.1pt",
+                    out = paste0(latexpath,"descriptives/regression.tex"))
+})
+
+# add resizebox at the beginning and end
+table <- gsub("\\begin{tabular}","\\resizebox{0.9\\linewidth}{!}{\\begin{tabular}", table,fixed=T)
+table <- gsub("\\end{tabular}","\\end{tabular}}", table,fixed=T)
+
+# add german special characters
+table <- gsub("ä","{\"a}", table,fixed=T)
+table <- gsub("ö","{\"o}", table,fixed=T)
+table <- gsub("ü","{\"u}", table,fixed=T)
+table <- gsub("ß","{\\ss}", table,fixed=T)
+
+# save the modified file as .tex file
+writeLines(table, paste0(latexpath,"descriptives/regression.tex"))
+
+
+
+
+#================================================#
+# Regression Diagnostics ####
+#================================================#
+
+#--------------------------------------------------#
+# Outliers                             
+#--------------------------------------------------#
+dat$stud_resid <- rstudent(reg4)
+
+pdf(paste0(latexpath,"appendix/residuals.pdf"), family = "CM Roman")
+plot(1:nrow(dat),dat$stud_resid, ylim=c(-3.3,3.3), ylab = "Standardisierte Residuen", xlab = "Fälle"  ) #create scatterplot 
+abline(h=c(-2,2),col="red",lty=2) #add reference lines
+abline(h=c(-2.5,2.5),col="red",lty=2) #add reference lines
+dev.off()
+
+
+outliers <- subset(dat,abs(stud_resid)>2)
+nrow(outliers)/nrow(dat)
+
+outliers <- subset(dat,abs(stud_resid)>2.5)
+nrow(outliers)/nrow(dat)
 
 
 
 #--------------------------------------------------#
-# Model 6 Interaction                             
+# Influencial cases
 #--------------------------------------------------#
+pdf(paste0(latexpath,"appendix/cooksdistance.pdf"), family = "CM Roman")
+plot(reg4,4)
+dev.off()
 
+dat$cooks.distance<-cooks.distance(reg4)
 
 
-reg7 <- update(reg5, .~. + ident_pro:meat_know)
-summary(reg7)
-lm.beta::lm.beta(reg6)
 
+#--------------------------------------------------#
+# Independence of Errors                             
+#--------------------------------------------------#
+#The assumption of independent errors implies that for any two observations the residual terms should be uncorrelated. This is also known as a lack of autocorrelation. 
+dwt(reg4)
 
-stargazer(reg5, reg5_int, type = "text", single.row = TRUE, omit.stat=c("LL","ser","f"))
+#Der Durbin Watson Test zum Testen für unabhängige Fehler liegt bei 2.02, was weit über den Grenzwerten von 1 und weit unter 3 liegt,
+# Außerdem ist der Test mit p = 0.55 weit weg davon signifikant zu sein. (292)
 
-dat %>% 
-  tidyr::drop_na(c("ident_pro_rec2","meat_know")) %>% 
-  group_by(ident_pro_rec2, meat_know) %>% 
-  summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% arrange(ident_pro_rec2) %>% 
-  ggplot(aes(x=factor(ident_pro_rec2), y=meat_con, group=meat_know, color=meat_know)) + 
-  geom_point() +
-  geom_smooth(method = "lm", alpha = 0.1)
 
-dat %>% 
-  tidyr::drop_na(c("ident_pro","meat_know")) %>% 
-  group_by(ident_pro, meat_know) %>% 
-  summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% arrange(ident_pro) %>% 
-  ggplot(aes(x=factor(ident_pro), y=meat_con, group=meat_know, color=meat_know)) + 
-  geom_point() +
-  geom_smooth(method = "lm", alpha = 0.1)
+#--------------------------------------------------#
+# Multicollinearity                             
+#--------------------------------------------------#
+vif(reg4)
 
+# die vif Toleranz
+1/vif(reg4)
 
+# Durchschnittlicher vif
+mean(vif(reg4))
 
+#--------------------------------------------------#
+# heteroscedasticity
+#--------------------------------------------------#
+# get fittet values in the original data set
+dat$fitted <- reg4$fitted.values
 
-
-library(interplot)
-interplot(m = reg7, var1 = "ident_pro", var2 = "meat_know")
-
-library(emmeans)
-emtrends(reg7, ~ meat_know, var="ident_pro")
-emtrends(reg7, pairwise ~ meat_know, var="ident_pro")
-
-(mylist <- list(ident_pro=seq(1,5,by=0.25),meat_know=c("don´t know","know")))
-emmip(reg7, meat_know ~ ident_pro, at=mylist, CIs=TRUE) + 
-  labs(x = "Wichtigkeit der Umweltidentität", y = "Fleischkonsum")
-
-
-
-
-1/vif(reg5)
-mean(vif(reg5))
-
-
-
-
-final_reg <- reg5
-
-
-
-# Multicollinearity
-
-
-rcorr(as.matrix(regression[,c("adspend","airplay","starpower")]))
-plot(regression[,c("adspend","airplay","starpower")])
-
-rcorr(as.matrix(dat[,vs]))
-plot(dat[,vs])
-
-ggcorrmat(
-  data = dat[,vs],
-  matrix.type = "upper", # type of visualization matrix
-  colors = c("darkgrey", "white", "steelblue"),
-  title = "Correlalogram of independent variables")
-
-
-
-
-# alternatively...
-ggcorrmat(
-  data = regression[,c("adspend","airplay","starpower")],
-  matrix.type = "upper", # type of visualization matrix
-  colors = c("darkgrey", "white", "steelblue"),
-  title = "Correlalogram of independent variables")
-
-# compute variance inflation factors
-1/vif(multiple_regression)
-
-
-
-
-# The following code is taken from the fourth chapter of the online script, which provides more detailed explanations:
-# https://imsmwu.github.io/MRDA2018/_book/regression.html
-
-#-------------------------------------------------------------------#
-#---------------------Install missing packages----------------------#
-#-------------------------------------------------------------------#
-
-# At the top of each script this code snippet will make sure that all required packages are installed
-
-req_packages <- c("Hmisc", "psych", "plyr", "ggplot2", "lm.beta", "car", "ggstatsplot", "stargazer", "sandwich", "lmtest", "boot")
-req_packages <- req_packages[!req_packages %in% installed.packages()]
-lapply(req_packages, install.packages)
-
-#-------------------------------------------------------------------#
-#----------------------------Correlation----------------------------#
-#-------------------------------------------------------------------#
-
-#set options
-options(scipen = 999, digits = 4) 
-
-#-------------------------------------------------------------------#
-#----------------------Simple linear regression---------------------#
-#-------------------------------------------------------------------#
-
-# Load and inspect data
-regression <- read.table("https://raw.githubusercontent.com/IMSMWU/Teaching/master/MRDA2017/music_sales_regression.dat", 
-                         sep = "\t", 
-                         header = TRUE) #read in data
-regression$country <- factor(regression$country, levels = c(0:1), labels = c("local", "international")) #convert grouping variable to factor
-regression$genre <- factor(regression$genre, levels = c(1:3), labels = c("rock", "pop","electronic")) #convert grouping variable to factor
-head(regression)
-
-# Descriptive statistics
-psych::describe(regression)
-
-# Plot the data 
-ggplot(regression, mapping = aes(adspend, sales)) + 
-  geom_point(shape = 1) +
-  geom_smooth(method = "lm", fill = "blue", alpha = 0.1) + 
-  geom_hline(yintercept = mean(regression$sales), linetype="dotted") + #mean of sales
-  geom_vline(xintercept = mean(regression$adspend), linetype="dotted") + #mean of advertising
-  labs(x = "Advertising expenditures (EUR)", y = "Number of sales") + 
-  theme_bw()
-
-# Alternatively, using ggstatsplot
-scatterplot <- ggscatterstats(
-  data = regression,
-  x = adspend,
-  y = sales,
-  xlab = "Advertising expenditure (EUR)", # label for x axis
-  ylab = "Sales", # label for y axis
-  line.color = "black", # changing regression line color line
-  title = "Advertising expenditure and Sales", # title text for the plot
-  marginal.type = "histogram", # type of marginal distribution to be displayed
-  xfill = "steelblue", # color fill for x-axis marginal distribution
-  yfill = "darkgrey", # color fill for y-axis marginal distribution
-  xalpha = 0.6, # transparency for x-axis marginal distribution
-  yalpha = 0.6, # transparency for y-axis marginal distribution
-  bf.message = FALSE,
-  messages = FALSE # turn off messages and notes
-)
-scatterplot
-#save plot (optional)
-
-ggsave("scatterplot.jpg", height = 6, width = 7.5,scatterplot)
-
-
-#-------------------------------------------------------------------#
-#--------------------Multiple linear regression---------------------#
-#-------------------------------------------------------------------#
-
-# Confidence intervals
-confint(final_reg)
-
-# visualization
-ggcoefstats(x = final_reg,
-            title = "Sales predicted by adspend, airplay, & starpower")
-#save plot (optional)
-
-ggsave("lm_out.jpg", height = 6, width = 7.5)
-
-# reporting using stargazer
-# https://www.jakeruss.com/cheatsheets/stargazer/
-
-stargazer(final_reg, type = "text",ci = TRUE, ci.level = 0.95, ci.separator = "; ")
-
-# Standardized coefficients
-
-library(lm.beta)
-lm.beta(final_reg)
-# The same can be achieved using the scale function on the variables in the regression equation
-
-multiple_regression_std <- lm(scale(sales) ~ scale(adspend) + scale(airplay) + scale(starpower), data = regression) #estimate linear model
-summary(multiple_regression_std) #summary of results
-
-# Plot of model fit (predicted vs. observed values)
-
-dat$yhat <- predict(final_reg)
-
-ggplot(dat,aes(x = yhat, y = meat_con)) +  
-  geom_point(size=2,shape=1) +  #Use hollow circles
-  scale_x_continuous(name="predicted values") +
-  scale_y_continuous(name="observed values") +
-  geom_abline(intercept = 0, slope = 1) +
-  theme_bw()
-# Plot model fit for bivariate model (predicted vs. observed values)
-
-regression$yhat_1 <- predict(simple_regression)
-
-ggplot(regression,aes(x = yhat_1, y = sales)) +  
-  geom_point(size=2,shape=1) +  #Use hollow circles
-  scale_x_continuous(name="predicted values") +
-  scale_y_continuous(name="observed values") +
-  geom_abline(intercept = 0, slope = 1) +
-  theme_bw()
-
-# Added variable plots
-
-library(car)
-avPlots(reg5)
-
-# Using the model for making predictions
-
-summary(multiple_regression)$coefficients[1,1] + 
-  summary(multiple_regression)$coefficients[2,1]*800 + 
-  summary(multiple_regression)$coefficients[3,1]*30 + 
-  summary(multiple_regression)$coefficients[4,1]*5
-
-#-------------------------------------------------------------------#
-#-------------------------Potential problems------------------------#####
-#-------------------------------------------------------------------#
-
-# Outliers
-new <- data.frame()
-new$stud_resid <- rstudent(final_reg)
-head(dat)
-
-plot(1:nrow(dat),dat$stud_resid, ylim=c(-3.3,3.3)) #create scatterplot 
-abline(h=c(-3,3),col="red",lty=2) #add reference lines
-
-outliers <- subset(dat,abs(stud_resid)>3)
-outliers
-
-
-
-# Influencial observations
-
-plot(final_reg,4)
-plot(final_reg,5)
-
-# Linear specification
-
-avPlots(final_reg)
-
-# Constant error variance (homoscedasticity)
-plot(final_reg, 1)
+# heteroscedasticity test
+pdf(paste0(latexpath,"appendix/hetero.pdf"), family = "CM Roman")
+ggplot(dat, aes(fitted, stud_resid)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", colour = "Blue") + 
+  labs(x = "Geschätzte Werte", y = "Standardisierte Residuen") +
+  theme_minimal()
+dev.off()
+  
 # Breusch-Pagan Test
 library(lmtest)
-bptest(final_reg)
+bptest(reg4)
+
 # If test is significant, transform the data, or use robust SE's:
 library(sandwich)
-coeftest(final_reg, vcov = vcovHC(final_reg))
+coeftest(reg4, vcov = vcovHC(reg4))
 
-# Normal distribution of residuals
-plot(final_reg,2)
-shapiro.test(resid(final_reg))
+
+#--------------------------------------------------#
+# Normal Distribution of Residuals
+#--------------------------------------------------#
+pdf(paste0(latexpath,"appendix/normalverteilung.pdf"), family = "CM Roman")
+ggplot(dat, aes(stud_resid)) + 
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white") +
+  labs(x = "Standardisierte Redisuen", y = "Dichte") + 
+  stat_function(fun = dnorm, 
+  args = list(mean = mean(dat$stud_resid, na.rm = TRUE), 
+                     sd = sd(dat$stud_resid, na.rm = TRUE)), colour = "blue", size = 1)+
+  theme_minimal()
+dev.off()
+# shapiro
+shapiro.test(resid(reg4))
+
 # If the residuals do not follow a normal distribution, transform the data or use bootstrapping
 library(boot)
 # function to obtain dat coefficients
@@ -2574,37 +2379,60 @@ bs <- function(formula, data, indices) {
   return(coef(fit))
 }
 # bootstrapping with 1000 replications
-boot_out <- boot(data=dat, statistic=bs, R=6000, formula = meat_con ~ ei_ind + ident_pro + ident_sal + ident_com + 
-                   meat_know + meat_norm + nep_single15 + sex + age + isced + 
-                   income_hh)
+boot_out <- boot(data=dat, statistic=bs, R=6000, formula = meat_con ~ ei_ind + ident_pro + ident_sal + ident_com_qual + 
+                   ident_com_quant + nep_ind + meat_know + meat_norm + age + 
+                   sex + income_hh + isced)
 # view results
 summary(boot_out)
-plot(boot_out, index=1) # intercept
-plot(boot_out, index=2) # adspend
-plot(boot_out, index=3) # airplay
-plot(boot_out, index=3) # starpower
+plot(boot_out, index=1)
+plot(boot_out, index=2) 
+plot(boot_out, index=3) 
+plot(boot_out, index=4) 
 # get 95% confidence intervals
-boot.ci(boot_out, type="bca", index=1) # intercept
-boot.ci(boot_out, type="bca", index=2) # adspend
-boot.ci(boot_out, type="bca", index=3) # airplay
-boot.ci(boot_out, type="bca", index=4) # starpower
+boot.ci(boot_out, type="bca", index=1)  
+boot.ci(boot_out, type="bca", index=1)  
+boot.ci(boot_out, type="bca", index=2)  # ei_ind
+boot.ci(boot_out, type="bca", index=3)  # ident_pro
+boot.ci(boot_out, type="bca", index=4)  # ident_sal
+boot.ci(boot_out, type="bca", index=5)  # ident_com_qual
+boot.ci(boot_out, type="bca", index=6)  # ident_com_quant
+boot.ci(boot_out, type="bca", index=7)  # nep_ind
+boot.ci(boot_out, type="bca", index=8)  # meat_know
+boot.ci(boot_out, type="bca", index=9)  # meat_norm
+boot.ci(boot_out, type="bca", index=10) # age
+boot.ci(boot_out, type="bca", index=11) # sex
+boot.ci(boot_out, type="bca", index=12) # income_hh
+boot.ci(boot_out, type="bca", index=13) # isced
 
-# Multicollinearity
+#-------------------------------------------------------------------#
+#-------------------------Variable selection------------------------#####
+#-------------------------------------------------------------------#
 
-library(Hmisc)
-rcorr(as.matrix(dat[,c("adspend","airplay","starpower")]))
-plot(dat[,c("adspend","airplay","starpower")])
+set.seed(123)
+# Add another random variable
+dat$var_test <- rnorm(nrow(dat),0,1)
 
-# alternatively...
-library(ggstatsplot)
-ggcorrmat(
-  data = dat[,c("adspend","airplay","starpower")],
-  matrix.type = "lower", # type of visualization matrix
-  colors = c("darkgrey", "white", "steelblue"),
-  title = "Correlalogram of independent variables")
+# Model comparison with anova
+anova(reg4,reg5)
 
-# compute variance inflation factors
-vif(final_reg)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #-------------------------------------------------------------------#
 #----------------------Out-of-sample prediction---------------------#
@@ -2630,261 +2458,48 @@ cor(dat[test,"meat_con"],pred_lm, use = "complete.obs")^2 # R^2 for test data
 plot(dat[test,"meat_con"],pred_lm,xlab="y measured",ylab="y predicted",cex.lab=1.3)
 abline(c(0,1))
 
-#-------------------------------------------------------------------#
-#-------------------------Variable selection------------------------#####
-#-------------------------------------------------------------------#
 
-set.seed(123)
-# Add another random variable
-dat$var_test <- rnorm(nrow(dat),0,1)
+#================================================#
+# REGRESSION DIAGNOSTICS ####
+#================================================#
+# Alternatively, using ggstatsplot
+scatterplot <- ggscatterstats(
+  data = regression,
+  x = adspend,
+  y = sales,
+  xlab = "Advertising expenditure (EUR)", # label for x axis
+  ylab = "Sales", # label for y axis
+  line.color = "black", # changing regression line color line
+  title = "Advertising expenditure and Sales", # title text for the plot
+  marginal.type = "histogram", # type of marginal distribution to be displayed
+  xfill = "steelblue", # color fill for x-axis marginal distribution
+  yfill = "darkgrey", # color fill for y-axis marginal distribution
+  xalpha = 0.6, # transparency for x-axis marginal distribution
+  yalpha = 0.6, # transparency for y-axis marginal distribution
+  bf.message = FALSE,
+  messages = FALSE # turn off messages and notes
+)
+scatterplot
+#save plot (optional)
 
-# Model comparison with anova
-lm0 <- lm(sales ~ 1, data = dat) 
-lm1 <- lm(sales ~ adspend, data = dat) 
-lm2 <- lm(sales ~ adspend + airplay, data = dat) 
-lm3 <- lm(sales ~ adspend + airplay + starpower, data = dat) 
-lm4 <- lm(sales ~ adspend + airplay + starpower + var_test, data = dat) 
-anova(lm0, lm1, lm2, lm3, lm4)
+ggsave("scatterplot.jpg", height = 6, width = 7.5,scatterplot)
 
-# Stepwise variable selection
-# Automatic model selection with step
-model_lmstep <- step(lm4)
-model_lmstep
-
-# Comparison of the models
-
+# visualization
+library(ggstatsplot)
+ggcoefstats(x = reg4,
+            title = "Sales predicted by adspend, airplay, & starpower")
+#save plot (optional)
+ggsave("lm_out.jpg", height = 6, width = 7.5)
 
 # reporting using stargazer
-stargazer(reg1, reg2, reg3, reg5, type = "text",ci = TRUE, ci.level = 0.95, ci.separator = "; ")
-
-
-
-
-stargazer(reg1,reg2,reg3)
-
-
-
-#================================================#
-# Experimenting Place ####
-#================================================#
-
-#--------------------------------------------------#
-# CV: NEP Scale (Ecological Worldview) 2016 ####                          
-#--------------------------------------------------#
-q16a <- c(
-  #  "dczd001a", # Großstadtnähe Wohngegend 
-  "dczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen C
-  "dczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen A
-  "dczd004a", # NEP-Skala: Folgen von menschlichem Eingriff B
-  "dczd005a", # NEP-Skala: Menschlicher Einfallsreichtum A
-  "dczd006a", # NEP-Skala: Missbrauch der Umwelt durch Menschen B
-  "dczd007a", # NEP-Skala: Genügend natürliche Rohstoffe A
-  "dczd008a", # NEP-Skala: Pflanzen und Tiere gleiches Recht B
-  "dczd009a", # NEP-Skala: Gleichgewicht der Natur stabil genug A
-  "dczd010a", # NEP-Skala: Menschen Naturgesetzen unterworfen B
-  "dczd011a", # NEP-Skala: Umweltkrise stark übertrieben. A
-  "dczd012a", # NEP-Skala: Erde ist wie Raumschiff C
-  "dczd013a", # NEP-Skala: Menschen zur Herrschaft über Natur bestimmt A
-  "dczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich B
-  "dczd015a", # NEP-Skala: Natur kontrollieren A
-  "dczd016a" # NEP-Skala: Umweltkatastrophe B
-)
-
-#A: human domination of nature (RC2)
-#B: balance of nature (RC1)
-#C: limits to growth (RC3)
-# Recoding the variable so that high score means "high ecological worldview"
-q16a_nep_rec <- q16a[c(1,3,5,7,9,11,13,15)]
-
-dat[, q16a_nep_rec] <- lapply(dat[, q16a_nep_rec], function(i) 
-  ifelse(i == 1, 5, 
-         ifelse(i == 2, 4,
-                ifelse(i == 3, 3,
-                       ifelse(i == 4, 2,
-                              ifelse(i == 5, 1, NA))))))
-
-#--------------------------------------------------#
-# PCA (NEP)                             
-#--------------------------------------------------#
-
-# STEP 1
-
-# Inspect correlation matrix
-
-raq_matrix <- cor(dat[,q16a], use="complete.obs") #create matrix
-round(raq_matrix,3)
-
-# Low correlations by variable
-
-correlations <- as.data.frame(raq_matrix)
-# Correlation plot
-
-library(psych)
-corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations between variables")
-# Check number of low correlations adn mean correlaiton per variable
-
-diag(correlations) <- NA #set diagonal elements to missing
-apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correlations for each variable
-apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
-# Conduct Bartlett's test (p should be < 0.05)
-
-cortest.bartlett(raq_matrix, n = nrow(dat))
-# Count number of high correlations for each variable
-
-apply(abs(correlations) > 0.8, 1, sum, na.rm = TRUE)
-# Compute determinant (should be > 0.00001)
-
-det(raq_matrix)
-det(raq_matrix) > 0.00001
-
-# Compute MSA statstic (should be > 0.5)
-
-KMO(dat[,q16a])
-
-# STEP 2
-
-# Deriving factors
-# Find the number of factors to extract
-pc1 <- principal(dat[,q16a], nfactors = 15, rotate = "none")
-pc1
-
-plot(pc1$values, type="b")
-abline(h=1, lty=2)
-
-# Run model with appropriate number of factors
-
-pc2 <- principal(dat[,q16a], nfactors = 3, rotate = "none")
-pc2
-# Inspect residuals
-
-# Create residuals matrix
-residuals <- factor.residuals(raq_matrix, pc2$loadings)
-round(residuals,3)
-
-# Create reproduced matrix
-reproduced_matrix <- factor.model(pc2$loadings)
-round(reproduced_matrix,3)
-# Compute model fit manually (optional - also included in output)
-
-ssr <- (sum(residuals[upper.tri((residuals))]^2)) #sum of squared residuals 
-ssc <- (sum(raq_matrix[upper.tri((raq_matrix))]^2)) #sum of squared correlations
-ssr/ssc #ratio of ssr and ssc
-1-(ssr/ssc) #model fit
-
-# Share of residuals > 0.05 (should be < 50%)
-residuals <- as.matrix(residuals[upper.tri((residuals))])
-large_res <- abs(residuals) > 0.05
-sum(large_res)
-sum(large_res)/nrow(residuals)
-
-# Test if residuals are approximately normally distributed
-
-hist(residuals)
-qqnorm(residuals) 
-qqline(residuals)
-shapiro.test(residuals)
-
-# STEP 3
-# oblique factor rotation 
-pc3 <- principal(dat[,q16a], nfactors = 3, rotate = "oblimin")
-pc3
-print.psych(pc3, cut = 0.3)
-
-
-# Orthogonal factor rotation without the 07 item, which loads to high on other factors
-pc3 <- principal(dat[,q16a[-6]], nfactors = 3, rotate = "varimax")
-pc3
-print.psych(pc3)
-
-#--------------------------------------------------#
-# Reliability Analysis                            
-#--------------------------------------------------#
-
-### Three Dimensional NEP Scale as suggested by PCA
-
-# Specify subscales according to results of PCA
-#A: human domination of nature (RC2)
-#B: balance of nature (RC1)
-#C: limits to growth (RC3)
-nep_dom <- dat[,q16a[c(2,4,8,10,12,14)]]
-nep_bal <- dat[,q16a[c(3,5,7,9,13,15)]]
-nep_gro <- dat[,q16a[c(1,11)]]
-
-# Test reliability of subscales
-psych::alpha(nep_dom)
-psych::alpha(nep_bal)
-psych::alpha(nep_gro)
-
-### One Dimensional NEP Scale
-nep <- dat[,q16a]
-
-# Test reliability of subscales
-psych::alpha(nep)
-
-#--------------------------------------------------#
-# Constructing different NEP Variables                            
-#--------------------------------------------------#
-
-### Three Dimensional
-
-#get the scores from the PCA in our original data frame
-dat <- cbind(dat, pc3$scores)
-
-# give factors meaningful names
-
-dat <- dat %>% rename("nep_bal" = "RC1",
-                      "nep_dom" = "RC2",
-                      "nep_gro" = "RC3")
-
-
-
-#--------------------------------------------------#
-# One Dimensional Summing Index                             
-#--------------------------------------------------#
-
-# we will use all variables as in Dunlap(2000) stated
-
-# Test reliability of subscales
-q16a_ind <- q16a
-
-nep <- dat[,q16a_ind]
-psych::alpha(nep)
-
-# Interesting comment on what to take https://www.theanalysisfactor.com/index-score-factor-analysis/
-
-# Factor Scores
-# Orthogonal factor rotation without the 07 item, which loads to high on other factors
-pc3 <- principal(dat[,q16a], nfactors = 1, rotate = "none")
-pc3
-print.psych(pc3, cut = 0.3)
-
-# now bind this only One Dimensional NEP factor to our original data frame
-dat <- cbind(dat, pc3$scores)
-
-dat <- dat %>% rename("nep_scores" = "PC1")
-
-
-# Factor-Based Scores (Summed up and standardized to 1-10)
-# excluding item 6 to keep things consistent (Might need to reverse this, depending on how I proceed)
-
-
-# creating a sum over all the selected items
-dat$nep_sum <- dat %>% select(q16a_ind) %>%
-  mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
-
-# counting the NAs
-dat$nep_nas <- apply(dat[,q16a_ind], MARGIN = 1, function(x) sum(is.na(x)))
-
-# quick check
-dat[,c(q16a_ind, "nep_sum", "nep_nas")]
-
-# if there are more than 50% Nas don´t calculate the mean, otherwise take the average
-dat <- dat %>% mutate(nep_ind = ifelse(nep_nas > round(length(q16a_ind)/2)  , NA, 
-                                       ifelse(nep_nas == 0, nep_sum/length(q16a_ind),
-                                              ifelse(nep_nas !=0, nep_sum/(length(q16a_ind)-nep_nas),NA))))
-
-
-dat %>% select(q16a_ind,"nep_sum","nep_nas","nep_ind")
-
-
-
+# https://www.jakeruss.com/cheatsheets/stargazer/
+
+# Plot of model fit (predicted vs. observed values)
+dat$yhat <- predict(reg4)
+
+ggplot(dat,aes(x = yhat, y = meat_con)) +  
+  geom_point(size=2,shape=1) +  #Use hollow circles
+  scale_x_continuous(name="predicted values") +
+  scale_y_continuous(name="observed values") +
+  geom_abline(intercept = 0, slope = 1) +
+  theme_bw()
