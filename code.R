@@ -2047,4 +2047,8 @@ set.seed(123)
 dat$var_test <- rnorm(nrow(dat),0,1)
 
 # Model comparison with anova
+<<<<<<< HEAD
 anova(reg4,reg5)
+=======
+anova(reg4,reg5)
+>>>>>>> b8831cf2aeac88b2cab3f84f7901ee9b25c61b79
