@@ -7,7 +7,7 @@ The regression analyses carried out with data from the GESIS Panel indicates tha
 The paper confirms current research that knowledge about the environmental impact of meat and environmentally friendly attitudes are not automatically related to lower meat consumption. It was also confirmed that perceived standards are particularly relevant to the environmental behaviour (here meat consumption) of individuals. The observed correlations with socio-demographic variables largely contradict current research on vegetarians, which is why this paper argues that meat consumption itself should be investigated as an object of research in scientific discourse.
 
 =================================
-German: 
+German 
 
 Um die Auswirkungen der Klimakrise abzuschwächen sind gesellschaftliche Veränderungen in nahezu allen Dimensionen des gesellschaftlichen Zusammenlebens notwendig. Diese Arbeit fokussiert sich auf eine mögliche Maßnahme im Ernährungssektor: Die Reduzierung des Fleischkonsums. Da Forschung zum Thema Fleischkonsum rar ist, versucht diese Arbeit Einblicke in Variablen zu gewinnen, die in engem Zusammenhang mit dem Fleischkonsum stehen. Speziell wird die übergeordnete Frage untersucht inwiefern die Umweltidentität einer Person mit deren Fleischkonsum zusammenhängt.
 
