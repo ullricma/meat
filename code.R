@@ -27,6 +27,7 @@ library(corrr)
 
 options(digits = 2)
 options(max.print = 100)
+fontsize <- 11
 
 
 #--------------------------------------------------#
@@ -436,7 +437,7 @@ correlations <- as.data.frame(raq_matrix)
 
 library(psych)
 pdf(paste0(latexpath,"descriptives/eicors.pdf"), family = "CM Roman")
-corPlot(correlations, numbers=TRUE, upper=FALSE, diag=TRUE, colors = FALSE, zlim = c(0:1), labels = eval(labels))
+corPlot(correlations, numbers=TRUE, upper=FALSE, diag=TRUE, colors = FALSE, xlas = 2, zlim = c(0:1), labels = eval(labels))
 dev.off()
 
 # command to open pdf from R
@@ -588,12 +589,14 @@ eipca[nrow(eipca) + 1,] <- c(rel1,rel2)
 
 # assign row and column labels
 rownames(eipca) <- c(labels[-5],"Erklärte Varianz in %","Eigenwert","Alpha")
-colnames(eipca) <- c("Faktor1","Faktor2")
+colnames(eipca) <- c("Faktor 1","Faktor 2")
 
 # create the table and save it
 kable(eipca, format = "latex", booktabs = TRUE, digits = 2) %>% 
   row_spec(10, hline_after = T) %>% 
+      kable_styling(font_size = fontsize) %>% 
   save_kable(paste0(latexpath, "appendix/eipca"), keep_tex = TRUE)
+
 setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 
 
@@ -676,6 +679,7 @@ colnames(eipca_single) <- c("Umweltidentität")
 # create the table and save it
 kable(eipca_single, format = "latex", booktabs = TRUE, digits = 2) %>% 
   row_spec(10, hline_after = T) %>% 
+      kable_styling(font_size = fontsize) %>% 
   save_kable(paste0(latexpath, "appendix/eipca_single"), keep_tex = TRUE)
 setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 
@@ -858,7 +862,7 @@ df$per <- round(df$n/df$total*100,0)
 df$per <- paste0("(",df$per," %)")
 
 # plot it
-pdf(paste0(latexpath,"descriptives/meatconbar.pdf"), family = "CM Roman", width = 8.5 , height= 7)
+pdf(paste0(latexpath,"descriptives/meatconbar.pdf"), family = "CM Roman", width = 8.5 , height= 5)
 
 ggplot(df, aes(x = labels, y=n, label = n)) + 
   geom_bar(stat = "identity", width = 0.2) + 
@@ -966,7 +970,7 @@ correlations <- as.data.frame(raq_matrix)
 # Correlation plot
 library(psych)
 pdf(paste0(latexpath,"descriptives/nepcors.pdf"), family = "CM Roman")
-corPlot(correlations, numbers=TRUE, upper=FALSE, diag=TRUE, colors = FALSE, zlim = c(0:1), labels = nep_labels)
+corPlot(correlations, numbers=TRUE, upper=FALSE, diag=TRUE, colors = FALSE, xlas = 2, zlim = c(0:1), labels = nep_labels)
 dev.off()
 #knitr::plot_crop(paste0(latexpath,"descriptives/nepcors.pdf"))
 # Check number of low correlations adn mean correlaiton per variable
@@ -1124,7 +1128,7 @@ neppca_single$Theorie <- NA
 # fill the new column with labels
 neppca_single[1:15,"Theorie"] <- nep_labels_fac
 rownames(neppca_single) <- c(nep_labels,"Erklärte Varianz in %","Eigenwert")
-colnames(neppca_single) <- c("Faktor1","Faktor2","Faktor3","Faktor4","Theorie")
+colnames(neppca_single) <- c("Faktor 1","Faktor 2","Faktor 3","Faktor 4","Theorie")
 
 neppca_single <- neppca_single %>% select(5,1:4)
 
@@ -1132,6 +1136,7 @@ neppca_single <- neppca_single[order(neppca_single[,1]),]
 
 kable(neppca_single, format = "latex", booktabs = TRUE, digits = 2, linesep = c("", "", "\\addlinespace")) %>% 
   row_spec(15, hline_after = T) %>% 
+      kable_styling(font_size = fontsize) %>% 
   save_kable(paste0(latexpath, "appendix/neppca"), keep_tex = TRUE)
 
 setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
@@ -1224,6 +1229,7 @@ kable(neppca_single,
       digits = 2,
       col.names = c("Faktor", linebreak("Item-Total\n Korrelation")), escape = FALSE) %>% 
   row_spec(15, hline_after = T) %>% 
+      kable_styling(font_size = fontsize) %>% 
   save_kable(paste0(latexpath, "appendix/neppca_single"), keep_tex = TRUE)
 setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 
@@ -1355,14 +1361,29 @@ meat_know <- dat %>% drop_na(ceas108a) %>%
   adorn_pct_formatting(digits = 0, affix_sign = FALSE)
 
 # assign column labels
+labels <- c(
+  "An jedem Tag\n mehrmals",
+  "An jedem Tag\n einmal",
+  "An 5-6 Tagen\n pro Woche",
+  "An 3-4 Tagen\n pro Woche",
+  "An 1-2 Tagen\n pro Woche",
+  "Seltener",
+  "Gar nicht")
+
+# turn vector around
+labels <- rev(labels)
+
 colnames(meat_know) <- c("Fleischkonsum",as.character(seq(1,7,1)),"Total")
+meat_know[,1] <- labels
+
 
 # creat the table and save it
 meat_know %>% 
   kable(format = "latex", booktabs = TRUE, escape = FALSE) %>% 
   add_header_above(c(" " = 1,"Treibhausgasausstoß Fleisch (Rang)" = 7)) %>% 
   column_spec(2:8, width = "0.5cm") %>% 
-  save_kable(paste0(latexpath, "appendix/meatknow"), keep_tex = TRUE) 
+      kable_styling(font_size = fontsize) %>% 
+  save_kable(paste0(latexpath, "appendix/meatknow"), keep_tex = TRUE)
 
 # set wd again, because somehow the function changes it
 setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
@@ -1774,11 +1795,11 @@ tmp <- do.call(data.frame,
 
 # changing names of columns/ rows
 varnames <- c("Umweltidentität",
-              "Umweltidentität Prominence",
-           "Umweltidentität Salience",
-           "Umweltidentität Commitment (qual.)", 
-           "Umweltidentität Commitment (quant.)",
-           "NEP",
+              "Umweltidentität Wichtigkeit",
+           "Umweltidentität Auslebungsgrad",
+           "Umweltidentität Bekenntnis (qual.)", 
+           "Umweltidentität Bekenntnis (quant.)",
+           "Ökologisches Weltbild (NEP)",
            "Fleischkonsum",
            "Wissen Treibhausgasausstoß",
            "Angemessenheit Fleischkonsum",
@@ -1798,6 +1819,7 @@ tmp %>%
   kable(format = "latex", booktabs = TRUE, escape = FALSE, align = "c") %>% 
   add_footnote(c("MW = Mittelwert, SA = Standardabweichung, MD = Median",
                  "Min = Minimum, Max = Maximum, NA = Fehlend"), notation="none", escape = TRUE) %>% 
+      kable_styling(font_size = fontsize) %>% 
   save_kable(paste0(latexpath, "descriptives/summary"), keep_tex = TRUE)
 
 # set wd again
@@ -1823,7 +1845,11 @@ p <- cp$p
 
 #gr <- colorRampPalette(c("#B52127", "white", "#2171B5")) other color palette
 plotvars <- varnames
-plotvars[c(4,5,9)] <- c("Umweltidentität\n Commitment (quant.)","Umweltidentität\n Commitment (qual.)", "Angemessenheit\n Fleischkonsum")
+plotvars[c(4,5,8,9,11)] <- c("Umweltidentität\n Bekenntnis (qual.)",
+                        "Umweltidentität\n Bekenntnis (quant.) - Mitglied",
+                        "Wissen Treibhausgasausstoß - Ja",
+                        "Angemessenheit\n Fleischkonsum",
+                        "Geschlecht - weiblich")
 
 # now save the graph as pdf
 pdf(paste0(latexpath,"descriptives/varcors.pdf"), family = "CM Roman", paper= "USr", width = 11, height = 9)
@@ -1895,6 +1921,7 @@ kable(stat_matrix, format = "latex", booktabs = TRUE, linesep = "", col.names = 
                     "ISCED-1997" = 5, 
                     "Wissen Treibhausgasausstoß" = 3, 
                     "Angemessenheit Fleischkonsum" = 8)) %>% 
+    kable_styling(font_size = fontsize) %>% 
   save_kable(paste0(latexpath, "descriptives/controlvarssummary"), keep_tex = TRUE)
 setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
 
@@ -2201,10 +2228,21 @@ mylist <- list(ident_pro=seq(1,5,by=0.25))
 plot.df <- emmeans::emmip(reg5, meat_know ~ ident_pro, at=mylist, plotit = FALSE)
 
 # get the interaction plot
+
+# emmeans::emmip(reg5, meat_know ~ ident_pro, at=mylist, CIs=TRUE) + 
+#   labs(x = "Wichtigkeit der Umweltidentität\n", y = "Fleischkonsum") +
+#   theme_minimal() + ylim(c(4,6))
+
 pdf(paste0(latexpath,"descriptives/interaction.pdf"), width = 8, height = 5, family = "CM Roman")
-emmeans::emmip(reg5, meat_know ~ ident_pro, at=mylist, CIs=TRUE) + 
-  labs(x = "Wichtigkeit der Umweltidentität\n", y = "Fleischkonsum") +
-  theme_minimal() + ylim(c(4,6))
+plot.df %>% 
+  ggplot(aes(x = xvar, y = yvar, color = tvar)) +
+  geom_line(size = 1) +
+  geom_point() +
+  geom_errorbar(aes(ymin=yvar-SE, ymax=yvar+SE), width=.1, size = 1,
+                position=position_dodge(0.05)) +
+  scale_y_continuous(name = "Fleischkonsum", limits = c(4,6)) +
+  scale_x_continuous(name = "Wichtigkeit Umweltidentität") + 
+  scale_color_discrete(name = "Wissen\nTreibhausgasausstoß\nFleisch", labels = c("Kein Wissen", "Wissen"))
 dev.off()
 
 
@@ -2228,12 +2266,14 @@ stargazer(reg1, reg2, reg3, reg4, reg5,
           initial.zero = TRUE,
           omit.stat=c("LL","ser","f"),
           star.cutoffs = c(0.05, 0.01, 0.001),
-          covariate.labels = c(varnames[-7],"Interaktion (Prominence:Wissen)"),
+          covariate.labels = c(varnames[-7],"Interaktion (Wichtigkeit:Wissen)"),
           dep.var.caption  = "Abhängige Variable",
           dep.var.labels   = "Eingesch{\"a}tzter Fleischkonsum",
           type = "text",
           align = TRUE,
-          column.sep.width = "0.1pt")
+          column.sep.width = "0.1pt",
+          label = "\\label{regression}",
+          table.placement = "H")
 
 
 # coef = list(reg1$coefficients, 
@@ -2243,35 +2283,48 @@ varnames[c(8,11)] <- c("Wissen Treibhausgasausstoß - Ja","Geschlecht - weiblich
 
 # grab the content of the stargazer output
 table <- capture.output({ stargazer(reg1, reg2, reg3, reg4, reg5,
-                    single.row = TRUE, 
+                    single.row = FALSE,
+                    label = "regression",
+                    title= "Ergebnisse der Regressionsmodelle",
                     ci = TRUE,
-                    ci.separator = " - ",
+                    ci.separator = " ; ",
                     digits = 2,
                     initial.zero = TRUE,
                     omit.stat=c("LL","ser","f"),
                     star.cutoffs = c(0.05, 0.01, 0.001),
-                    covariate.labels = c(varnames[-7],"Interaktion (Prominence:Wissen)"),
+                    covariate.labels = c(varnames[-7],"Interaktion (Wichtigkeit:Wissen)"),
                     dep.var.caption  = "Abhängige Variable",
                     dep.var.labels   = "Eingesch{\"a}tzter Fleischkonsum",
                     type = "latex",
                     align = TRUE,
-                    column.sep.width = "0.1pt",
-                    out = paste0(latexpath,"descriptives/regression.tex"))
+                    out = paste0(latexpath,"descriptives/regression.tex"),
+                    table.placement = "H")
 })
 
 # add resizebox at the beginning and end
-table <- gsub("\\begin{tabular}","\\resizebox{0.9\\linewidth}{!}{\\begin{tabular}", table,fixed=T)
+table <- gsub("\\begin{tabular}","\\resizebox{\\linewidth}{!}{\\begin{tabular}", table,fixed=T)
 table <- gsub("\\end{tabular}","\\end{tabular}}", table,fixed=T)
 
 # add german special characters
 table <- gsub("ä","{\"a}", table,fixed=T)
 table <- gsub("ö","{\"o}", table,fixed=T)
+table <- gsub("Ö","{\"O}", table,fixed=T)
 table <- gsub("ü","{\"u}", table,fixed=T)
 table <- gsub("ß","{\\ss}", table,fixed=T)
+
 
 # save the modified file as .tex file
 writeLines(table, paste0(latexpath,"descriptives/regression.tex"))
 
+plot <- dat %>% group_by(ident_pro, meat_know) %>% summarise(mw = mean(meat_con),
+                                                          n = n())
+plot %>% 
+  ggplot(aes(x = ident_pro, y = mw, color = meat_know)) +
+  geom_line(size = 1) +
+  geom_point() +
+  scale_y_continuous(name = "Fleischkonsum", limits = c(4,6)) +
+  scale_x_continuous(name = "Wichtigkeit Umweltidentität") + 
+  scale_color_discrete(name = "Wissen\nTreibhausgasausstoß\nFleisch", labels = c("Kein Wissen", "Wissen"))
 
 
 
