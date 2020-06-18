@@ -34,6 +34,7 @@ fontsize <- 11
 # Defining Latex working path for graphics
 #--------------------------------------------------#
 setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
+wd <- "C:/Users/Ulli/Desktop/Thesis/Data/meat"
 latexpath <- "C:/Users/Ulli/Desktop/Thesis/thesis_small/graphics/"
 
 #================================================#
@@ -338,9 +339,9 @@ dat <- dat %>% filter(!is.na(ceas097a))
 # now delete all cases where we don´t have any information about the environmental identity
 
 #let´s count the number of NA´s for our environmental identity item battery
-dat$nas <- dat %>% 
-  select(id, q17ident) %>% 
-  is.na %>% 
+dat$nas <- dat %>%
+  select(id, q17ident) %>%
+  is.na %>%
   rowSums 
 
 # now let´s delete the cases where we only have NAs for our environmental identity question
@@ -372,11 +373,20 @@ dat[, q17ident_rec] <- lapply(dat[, q17ident_rec], function(i)
 
 
 # create the labels
-labels <- c("Einklang (1)", "Verbunden (2)", "Besorgt (3)", "Beschützend (4)", "Unterlegen (5)", 
-            "Leidenschaftlich (6)", "Respektvoll (7)", "Abhängig (8)", 
-            "Fürsprecher (9)", "Bewahrer (10)", "Wehmütig (11)")
-
-
+labels <-
+  c(
+    "Einklang (1)",
+    "Verbunden (2)",
+    "Besorgt (3)",
+    "Beschützend (4)",
+    "Unterlegen (5)",
+    "Leidenschaftlich (6)",
+    "Respektvoll (7)",
+    "Abhängig (8)",
+    "Fürsprecher (9)",
+    "Bewahrer (10)",
+    "Wehmütig (11)"
+  )
 
 #--------------------------------------------------#
 # Creating a graph for the means of the environmental identity                             
@@ -385,20 +395,21 @@ labels <- c("Einklang (1)", "Verbunden (2)", "Besorgt (3)", "Beschützend (4)", 
 # now calculate the means and the labels
 # function to add standard errors if desired std <- function(x) sd(x)/sqrt(length(x))
 
-eichart <- dat %>% 
+eichart <- dat %>%
   select(q17ident) %>%
-  drop_na(q17ident) %>% 
+  drop_na(q17ident) %>%
   summarise_at(.vars = q17ident,
-               .funs = mean, na.rm = TRUE) %>% 
+               .funs = mean,
+               na.rm = TRUE) %>%
   gather(q17ident) %>%
-  ggplot(aes(x = q17ident, y = as.numeric(value))) + 
-  geom_point() + 
-  geom_line(group = 1) + 
-  coord_flip() + 
-  geom_text(aes(label=round(value,1)),hjust=-0.7, vjust=1) +
-  scale_x_discrete(name="Umweltidentität\n", labels = eval(labels))  +
-  scale_y_continuous(name="Mittelwert", limits = c(1,5)) +
-  theme(text = element_text(size = 11)) + 
+  ggplot(aes(x = q17ident, y = as.numeric(value))) +
+  geom_point() +
+  geom_line(group = 1) +
+  coord_flip() +
+  geom_text(aes(label = round(value, 1)), hjust = -0.7, vjust = 1) +
+  scale_x_discrete(name = "Umweltidentität\n", labels = eval(labels))  +
+  scale_y_continuous(name = "Mittelwert", limits = c(1, 5)) +
+  theme(text = element_text(size = 11)) +
   theme_light()
   #theme(text = element_text(size=16, family="CM Roman"))
 
@@ -592,12 +603,12 @@ rownames(eipca) <- c(labels[-5],"Erklärte Varianz in %","Eigenwert","Alpha")
 colnames(eipca) <- c("Faktor 1","Faktor 2")
 
 # create the table and save it
-kable(eipca, format = "latex", booktabs = TRUE, digits = 2) %>% 
-  row_spec(10, hline_after = T) %>% 
-      kable_styling(font_size = fontsize) %>% 
+kable(eipca, format = "latex", booktabs = TRUE, digits = 2) %>%
+  row_spec(10, hline_after = T) %>%
+  kable_styling(font_size = fontsize) %>%
   save_kable(paste0(latexpath, "appendix/eipca"), keep_tex = TRUE)
 
-setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
+setwd(wd)
 
 
 #================================================#
@@ -626,8 +637,8 @@ dat$ei_nas <- apply(dat[,q17ident], MARGIN = 1, function(x) sum(is.na(x)))
 
 # if there are more than 50% Nas don´t calculate the mean, otherwise take the average
 dat <- dat %>% mutate(ei_ind = ifelse(ei_nas > round(length(q17ident)/2), NA, 
-                                  ifelse(ei_nas == 0, ei_sum/length(q17ident),
-                                  ifelse(ei_nas !=0, ei_sum/(length(q17ident)-ei_nas),NA))))
+                               ifelse(ei_nas == 0, ei_sum/length(q17ident),
+                               ifelse(ei_nas !=0, ei_sum/(length(q17ident)-ei_nas),NA))))
 
 
 # Additive Indexing, problem: Missings can not be handled
@@ -679,9 +690,9 @@ colnames(eipca_single) <- c("Umweltidentität")
 # create the table and save it
 kable(eipca_single, format = "latex", booktabs = TRUE, digits = 2) %>% 
   row_spec(10, hline_after = T) %>% 
-      kable_styling(font_size = fontsize) %>% 
+  kable_styling(font_size = fontsize) %>% 
   save_kable(paste0(latexpath, "appendix/eipca_single"), keep_tex = TRUE)
-setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
+setwd(wd)
 
 
 
@@ -767,7 +778,7 @@ dat %>% select(q17pro, pro_sum, pro_nas, ident_pro)
 #--------------------------------------------------#
 
 # calculate the rowsums
-dat$com_sum <- dat %>% select(q17com[2:3]) %>% 
+dat$com_sum <- dat %>% select(q17com[2:3]) %>%
   mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
 
 # calculate the NAs
@@ -775,7 +786,7 @@ dat$com_nas <- apply(dat[,q17com[2:3]], MARGIN = 1, function(x) sum(is.na(x)))
 
 # create new variable if NAs < 50%
 dat <- dat %>% mutate(ident_com = ifelse(com_nas > 1, NA,
-                                   ifelse(com_nas == 0 | com_nas !=0, com_sum/(2-com_nas),NA)))
+                                  ifelse(com_nas == 0 | com_nas !=0, com_sum/(2-com_nas),NA)))
 
 
 dat %>% select(q17com[2:3], com_sum, com_nas, ident_com)
@@ -897,9 +908,6 @@ q15d <- c(
   "cczd015a", # NEP-Skala: Natur kontrollieren 
   "cczd016a") # NEP-Skala: Umweltkatastrophe
 
-#A: human domination of nature (RC2)
-#B: balance of nature (RC1)
-#C: limits to growth (RC3)
 # Recoding the variable so that high score means "high ecological worldview"
 q15d_nep_rec <- q15d[c(1,3,5,7,9,11,13,15)]
 
@@ -913,44 +921,20 @@ ifelse(i == 5, 1, NA))))))
 # creating labels
 
 nep_labels <- c("Höchstzahl (1)",
-            "Bedürfnisse (2)",
-            "Eingriff (3)",
-            "Einfallsreichtum (4)",
-            "Missbrauch (5)",
-            "Rohstoffe (6)",
-            "Recht (7)",
-            "Gleichgewicht (8)",
-            "Naturgesetze (9)",
-            "Umweltkrise (10)",
-            "Raumschiff (11)",
-            "Herrschaft (12)",
-            "Gleichgewicht2 (13)",
-            "Kontrollieren (14)",
-            "Katastrophe (15)")
-
-
-##"cczd001a", # Großstadtnähe Wohngegend
-#"cczd002a", # NEP-Skala: Nähern uns Höchstzahl an Menschen  || the reality of limits to growth
-#"cczd003a", # NEP-Skala: Recht Umwelt an Bedürfnisse anzupassen  || antianthropocentrism
-#"cczd004a", # NEP-Skala: Folgen von menschlichem Eingriff  ||the fragility of nature’s balance
-#"cczd005a", # NEP-Skala: Menschlicher Einfallsreichtum  || rejection of exemptionalism
-#"cczd006a", # NEP-Skala: Missbrauch der Umwelt durch Menschen  || possibility of an ecocrisis
-#"cczd007a", # NEP-Skala: Genügend natürliche Rohstoffe  || the reality of limits to growth
-#"cczd008a", # NEP-Skala: Pflanzen und Tiere gleiches Recht  || antianthropocentrism
-#"cczd009a", # NEP-Skala: Gleichgewicht der Natur stabil genug  || the fragility of nature’s balance
-#"cczd010a", # NEP-Skala: Menschen Naturgesetzen unterworfen  || rejection of exemptionalism
-#"cczd011a", # NEP-Skala: Umweltkrise stark übertrieben.  || possibility of an ecocrisis
-#"cczd012a", # NEP-Skala: Erde ist wie Raumschiff  || the reality of limits to growth
-#"cczd013a", # NEP-Skala: Menschen zur Herrschaft über Natur bestimmt  || antianthropocentrism
-#"cczd014a", # NEP-Skala: Gleichgewicht der Natur ist sehr empfindlich  || the fragility of nature’s balance
-#"cczd015a", # NEP-Skala: Natur kontrollieren  || rejection of exemptionalism
-#"cczd016a") # NEP-Skala: Umweltkatastrophe || possibility of an ecocrisis
-
-# the reality of limits to growth (1, 6, 11), 
-# antianthropocentrism (2, 7, 12), 
-# the fragility of nature’s balance (3, 8, 13), 
-# rejection of exemptionalism (4, 9, 14) 
-# and the possibility of an ecocrisis (5, 10, 15).
+                "Bedürfnisse (2)",
+                "Eingriff (3)",
+                "Einfallsreichtum (4)",
+                "Missbrauch (5)",
+                "Rohstoffe (6)",
+                "Recht (7)",
+                "Gleichgewicht (8)",
+                "Naturgesetze (9)",
+                "Umweltkrise (10)",
+                "Raumschiff (11)",
+                "Herrschaft (12)",
+                "Gleichgewicht2 (13)",
+                "Kontrollieren (14)",
+                "Katastrophe (15)")
 
 
 #--------------------------------------------------#
@@ -978,7 +962,6 @@ diag(correlations) <- NA #set diagonal elements to missing
 apply(abs(correlations) < 0.3, 1, sum, na.rm = TRUE) #count number of low correlations for each variable
 apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
 
-
 # let´s kick variables that don´t correlate with any others (< 0.3) and repeat the step above
 # q15d <- q15d[!(q15d %in% c("cczd007a","cczd002a","cczd010a"))]
 
@@ -989,12 +972,10 @@ apply(abs(correlations),1,mean,na.rm=TRUE) #mean correlation per variable
 
 
 # Inspect correlation matrix
-
 raq_matrix <- cor(dat[,q15d], use="complete.obs") #create matrix
 round(raq_matrix,3)
 
 # Low correlations by variable
-
 correlations <- as.data.frame(raq_matrix)
 # Correlation plot 
 corPlot(correlations,numbers=TRUE,upper=FALSE,diag=FALSE,main="Correlations between variables")
@@ -1136,10 +1117,10 @@ neppca_single <- neppca_single[order(neppca_single[,1]),]
 
 kable(neppca_single, format = "latex", booktabs = TRUE, digits = 2, linesep = c("", "", "\\addlinespace")) %>% 
   row_spec(15, hline_after = T) %>% 
-      kable_styling(font_size = fontsize) %>% 
+  kable_styling(font_size = fontsize) %>% 
   save_kable(paste0(latexpath, "appendix/neppca"), keep_tex = TRUE)
 
-setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
+setwd(wd)
 
 
 #--------------------------------------------------#
@@ -1166,7 +1147,8 @@ dat %>% select(q15d) %>% summarise_all(funs(sum(is.na(.))))
 
 
 # creating a sum over all the selected items
-dat$nep_sum <- dat %>% select(q15d) %>%
+dat$nep_sum <- dat %>% 
+  select(q15d) %>%
   mutate(sum = rowSums(., na.rm = TRUE)) %>% pull(sum)
 
 # counting the NAs
@@ -1180,8 +1162,8 @@ dat[,c(q15d, "nep_sum", "nep_nas")]
 
 # if there are more than 50% Nas don´t calculate the mean, otherwise take the average
 dat <- dat %>% mutate(nep_ind = ifelse(nep_nas > round(length(q15d)/2)  , NA, 
-                                  ifelse(nep_nas == 0, nep_sum/length(q15d),
-                                  ifelse(nep_nas !=0, nep_sum/(length(q15d)-nep_nas),NA))))
+                                ifelse(nep_nas == 0, nep_sum/length(q15d),
+                                ifelse(nep_nas !=0, nep_sum/(length(q15d)-nep_nas),NA))))
 
 dat %>% select(q15d,"nep_sum","nep_nas","nep_ind")
 
@@ -1223,15 +1205,12 @@ neppca_single[nrow(neppca_single) + 1,1] <- rel1
 rownames(neppca_single) <- c(nep_labels,"Erklärte Varianz in Prozent","Eigenwert","Cronbach's Alpha")
 
 
-kable(neppca_single, 
-      format = "latex", 
-      booktabs = TRUE, 
-      digits = 2,
+kable(neppca_single, format = "latex", booktabs = TRUE, digits = 2, 
       col.names = c("Faktor", linebreak("Item-Total\n Korrelation")), escape = FALSE) %>% 
   row_spec(15, hline_after = T) %>% 
-      kable_styling(font_size = fontsize) %>% 
+  kable_styling(font_size = fontsize) %>% 
   save_kable(paste0(latexpath, "appendix/neppca_single"), keep_tex = TRUE)
-setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
+setwd(wd)
 
 
 #================================================#
@@ -1253,13 +1232,13 @@ dat <- dat %>% rename("m7" = "ceas098a",
 
 # create a vector for the variables to handle them easier
 vars = 
-c("m7",
-"m6",
-"m5",
-"m4",
-"m3",
-"m2",
-"m1")
+  c("m7",
+    "m6",
+    "m5",
+    "m4",
+    "m3",
+    "m2",
+    "m1")
 
 # reverse order of vector
 vars <- rev(vars)
@@ -1382,106 +1361,12 @@ meat_know %>%
   kable(format = "latex", booktabs = TRUE, escape = FALSE) %>% 
   add_header_above(c(" " = 1,"Treibhausgasausstoß Fleisch (Rang)" = 7)) %>% 
   column_spec(2:8, width = "0.5cm") %>% 
-      kable_styling(font_size = fontsize) %>% 
+  kable_styling(font_size = fontsize) %>% 
   save_kable(paste0(latexpath, "appendix/meatknow"), keep_tex = TRUE)
 
 # set wd again, because somehow the function changes it
-setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
+setwd(wd)
 
-# quick check whether it worked as intended
-#dat %>% select(ceas108a, ceas109a, meat_know3) %>% filter(ceas109a == 1, meat_know3 == 1)
-#--------------------------------------------------#
-# Mensch und Umwelt Scale  (evtl. noch hinzufügbar)                        
-#--------------------------------------------------#
-# q15c <- c(
-#   "cbaq081a", # Mensch und Umwelt: Umweltverhältnissen für Nachfahren 
-#   "cbaq082a", # Mensch und Umwelt: Umweltkatastrophe 
-#   "cbaq083a", # Mensch und Umwelt: Durch Zeitungsberichte empört und wütend 
-#   "cbaq084a", # Mensch und Umwelt: Grenzen des Wachstums überschritten 
-#   "cbaq085a", # Mensch und Umwelt: Bevölkerung wenig umweltbewusst 
-#   "cbaq086a", # Mensch und Umwelt: Umweltproblem übertrieben 
-#   "cbaq087a", # Mensch und Umwelt: Politiker tun viel zu wenig für den Umweltschutz 
-#   "cbaq088a", # Mensch und Umwelt: Lebensstandard einschränken 
-#   "cbaq089a" # Mensch und Umwelt: Umweltschutzmaßnahmen trotz Arbeitsplatzverlusten
-# )
-
-
-#--------------------------------------------------#
-# Ernsthaftigkeit Klimawandel (1 (not at all serious) - 11 (extremly serious))
-#--------------------------------------------------#
-dat <- dat %>% rename("ekw" = "cczd032a")
-
-table(dat$ekw)
-
-#--------------------------------------------------#
-# Einkauf Bio Lebensmittel/ Regionale Lebensmittel                            
-#--------------------------------------------------#
-# 1 Nein, keines
-# 2 Ja, teilweise
-# 3 Ja, (fast) ausschließlich
-# 98 Weiß nicht
-
-dat <- dat %>% rename("lm_bio" = "cczd039a",
-                      "lm_reg" = "cczd040a")
-
-dat[, c("lm_bio", "lm_reg")] <- lapply(dat[, c("lm_bio", "lm_reg")], function(i) 
-ifelse(i == 1, 0,
-ifelse(i %in% c(2,3), 1,
-ifelse(i == 98, NA, NA))))
-
-table(dat$lm_bio, useNA = )
-
-#--------------------------------------------------#
-# Öko Strom                             
-#--------------------------------------------------#
-dat <- dat %>% rename("strom_öko" = "cczd041a")
-
-dat[,"strom_öko"] <-  
-ifelse(dat$strom_öko == 1, 3, 
-ifelse(dat$strom_öko %in% c(2,3), 2,
-ifelse(dat$strom_öko == 4, 1, NA)))
-
-table(dat$strom_öko)
-# 1 Beziehe ich bereits
-# 2 Habe ich fest vor
-# 3 Vielleicht zukünftig
-# 4 Nein
-# 98 Weiß nicht
-
-#--------------------------------------------------#
-# #Schwierigkeit eigenen Fleischkonsum zu reduzieren                            
-#--------------------------------------------------#
-
-### Comment: Lasse ich erstmal aus, könnte vielleicht später noch relevant werden
-
-#dat <- dat %>% rename("meat_redu" = "cbas071a")
-
-
-#================================================#
-# SOCIODEMOGRAPHIC VARIABLE CONSTRUCTION ####
-#================================================#
-
-### Initial Inverview Sociodemographics
-
-# "a11d054a", #Geschlecht
-# "a11d056b", #Geburtsjahr
-# "a11d082b", #Höchster Schulabschluss, inkl. o. A
-# "a11d086b", Beruflicher Ausbildungsabschluss, inkl. o. A
-# "a11d097c", #Haushaltseinkommen, 14 Kategorien standard edition
-# "a11d096b") #Persönliches Einkommen, 15 Kategorien standard edition
-
-### 2015 Interview Demographics
-
-#q15demo <- 
-#  c(
-#    "cfzh071a", #Geschlecht
-#    "cfzh072c", #Geburtsjahr
-#    "cfzh078a", #Höchster Schulabschluss, inkl. o. A
-#    "cfzh079a", #Berufsabschluss
-#    "cfzh081a", #Universitätsabschluss
-#    "cfzh084a", #Aktuell in beruflicher Ausbildung
-#    "cfzh090c", #Haushaltseinkommen, 14 Kategorien standard edition
-#    "cfzh089b") #Persönliches Einkommen, 15 Kategorien standard edition
 
 #--------------------------------------------------#
 # Sex                             
@@ -1608,43 +1493,6 @@ dat <- dat %>% rename("edu" = "cfzh078a",
                       "uni" = "cfzh081a")
 
 #####
-### edu 
-
-#1 Schüler/-in
-#2 Von der Schule abgegangen ohne Abschluss
-#3 Abschluss nach höchstens 7 Jahren Schulbesuch (im Ausland)
-#4 Polytechnische Oberschule DDR, Abschluss 8. oder 9. Klasse
-#5 Polytechnische Oberschule DDR, Abschluss 10. Klasse
-#6 Hauptschulabschluss, Volksschulabschluss
-#7 Realschulabschluss, Mittlere Reife
-#8 Fachhochschulreife
-#9 Abitur, allgemeine oder fachgebundene Hochschulreife
-
-### job
-
-#1 Keinen beruflichen Ausbildungsabschluss
-#2 Anlernausbildung oder ein berufliches Praktikum
-#3 Berufsvorbereitungsjahr oder Berufsgrundbildungsjahr
-#4 Abgeschlossene Lehre, Berufsausbildung im dualen System
-#5 Abschluss einer Berufsfachschule, Kollegschule
-#6 Laufbahnprüfung für den mittleren Dienst
-#7 Abschluss einer einjährigen Schule des Gesundheitswesens
-#8 Abschluss einer zwei- oder dreijährigen Schule des Gesundheitswesens
-#9 Abschluss einer Ausbildungsstätte/ Schule für Erzieher/-innen
-#10 Meister/-in, Techniker/-in oder gleichwertigen Fachschulabschluss
-#11 Abschluss einer Fachschule DDR
-#12 Abschluss einer Fachakademie (nur in Bayern)
-#13 Anderer beruflicher Abschluss
-
-### uni
-
-#1 Keinen Abschluss einer (Fach-)Hochschule oder Universität
-#2 Abschluss einer Berufsakademie
-#3 Abschluss einer Verwaltungsfachhochschule
-#4 Abschluss einer Fachhochschule
-#5 Abschluss einer Universität
-
-#####
 
 addmargins(table(dat$edu, dat$job))
 
@@ -1668,64 +1516,6 @@ ifelse(is.na(job) & is.na(edu), NA, NA))))))
 #--------------------------------------------------#
 # Construction of ISCED from initial dataset                             
 #--------------------------------------------------#
-
-#####
-
-# now get the isced for the initial interview to eventually fill up the missings
-# unfortunately the items were different at the beginning
-
-
-#1 Schüler/-in
-#Student
-#2 Von der Schule abgegangen ohne Hauptschulabschluss
-#Left school without degree of a lower secondary school
-
-#3 Hauptschulabschluss
-#Lower secondary school
-#4 Realschulabschluss
-#Secondary school
-#5 Polytechnische Oberschule DDR, Abschluss 8.oder 9. Klasse
-#Polytechnic secondary school GDR, Degree 8th or 9th grade
-#6 Polytechnische Oberschule DDR, Abschluss 10. Klasse
-#Polytechnic secondary school GDR, Degree 10th grade
-
-#7 Fachhochschulreife, Fachoberschule
-#Advanced technical college certificate
-#8 Abitur, allgemeine oder fachgebundene Hochschulreife
-#General qualification for university entrance
-#9 Anderer Schulabschluss
-#Other degree
-
-
-#1 Noch in beruflicher Ausbildung
-#In vocational training
-#2 Student/-in
-#Student
-#3 Schüler/-in an berufsorientiertre Aufbau-, Fachschule o. Ä.
-#Student in a additional training course or vocational school
-
-#4 Kein beruflicher Abschluss, nicht beruflicher Ausbildung
-#Not in vocational training/study
-
-#5 Beruflich-betriebliche Berufsausbildung
-#Professional-occupational vocational training
-#6 Beruflich-schulische Ausbildung
-#Professional-educational vocational training
-
-#7 Ausbildung an Fachschule der DDR
-#Degree of a college GDR
-#8 Ausbildung an Fach-, Meister-, Technikerschule,Berufs- oder
-#Fachakademie
-#Trainingat a college,master,technical school, vocational- or professional school
-#9 Fachhochschulabschluss
-#Technical College degree
-#10 Universitätsabschluss
-#University degree
-
-#11 Anderer beruflicher Abschluss
-#Other vocational education
-
-#####
 
 dat <- dat %>% rename("edu2" = "a11d082b",
                       "job2" = "a11d086b")
@@ -1764,15 +1554,6 @@ dat$ident_com_quant <- ifelse(dat$ident_com_quant == 2, 0,
 #================================================#
 
 # relevant variable list
-
-vars <- c("ei_single","ei_fac1","ei_fac2","ident_sal","ident_pro","ident_com",
-          "nep_bal15","nep_dom15","nep_single15",  "meat_con","meat_know","meat_pop", 
-          "meat_pop_more", "meat_norm", "meat_norm_diff","lm_reg", 
-          "lm_bio","strom_öko","ekw","envorga","age","sex","income_p", "income_hh", "isced", "edu", "job")
-
-vars <- c("ei_ind","ident_sal","ident_pro","ident_com",
-          "nep_single15", "meat_con","meat_concat", "meat_know", "meat_norm","age","sex","income_hh", "isced")
-
 vars <- c("ei_ind","ident_pro","ident_sal","ident_com_qual","ident_com_quant",
           "nep_ind", "meat_con", "meat_know", "meat_norm","age","sex","income_hh","isced")
 
@@ -1796,17 +1577,17 @@ tmp <- do.call(data.frame,
 # changing names of columns/ rows
 varnames <- c("Umweltidentität",
               "Umweltidentität Wichtigkeit",
-           "Umweltidentität Auslebungsgrad",
-           "Umweltidentität Bekenntnis (qual.)", 
-           "Umweltidentität Bekenntnis (quant.)",
-           "Ökologisches Weltbild (NEP)",
-           "Fleischkonsum",
-           "Wissen Treibhausgasausstoß",
-           "Angemessenheit Fleischkonsum",
-           "Alter",
-           "Geschlecht",
-           "Haushaltseinkommen",
-           "ISCED-1997")
+              "Umweltidentität Auslebungsgrad",
+              "Umweltidentität Bekenntnis (qual.)", 
+              "Umweltidentität Bekenntnis (quant.)",
+              "Ökologisches Weltbild (NEP)",
+              "Fleischkonsum",
+              "Wissen Treibhausgasausstoß",
+              "Angemessenheit Fleischkonsum",
+              "Alter",
+              "Geschlecht",
+              "Haushaltseinkommen",
+              "ISCED-1997")
 
 # assign new rownames
 rownames(tmp) <- varnames
@@ -1819,11 +1600,11 @@ tmp %>%
   kable(format = "latex", booktabs = TRUE, escape = FALSE, align = "c") %>% 
   add_footnote(c("MW = Mittelwert, SA = Standardabweichung, MD = Median",
                  "Min = Minimum, Max = Maximum, NA = Fehlend"), notation="none", escape = TRUE) %>% 
-      kable_styling(font_size = fontsize) %>% 
+  kable_styling(font_size = fontsize) %>% 
   save_kable(paste0(latexpath, "descriptives/summary"), keep_tex = TRUE)
 
 # set wd again
-setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
+setwd(wd)
 
 
 
@@ -1846,10 +1627,10 @@ p <- cp$p
 #gr <- colorRampPalette(c("#B52127", "white", "#2171B5")) other color palette
 plotvars <- varnames
 plotvars[c(4,5,8,9,11)] <- c("Umweltidentität\n Bekenntnis (qual.)",
-                        "Umweltidentität\n Bekenntnis (quant.) - Mitglied",
-                        "Wissen Treibhausgasausstoß - Ja",
-                        "Angemessenheit\n Fleischkonsum",
-                        "Geschlecht - weiblich")
+                             "Umweltidentität\n Bekenntnis (quant.) - Mitglied",
+                             "Wissen Treibhausgasausstoß - Ja",
+                             "Angemessenheit\n Fleischkonsum",
+                             "Geschlecht - weiblich")
 
 # now save the graph as pdf
 pdf(paste0(latexpath,"descriptives/varcors.pdf"), family = "CM Roman", paper= "USr", width = 11, height = 9)
@@ -1921,9 +1702,9 @@ kable(stat_matrix, format = "latex", booktabs = TRUE, linesep = "", col.names = 
                     "ISCED-1997" = 5, 
                     "Wissen Treibhausgasausstoß" = 3, 
                     "Angemessenheit Fleischkonsum" = 8)) %>% 
-    kable_styling(font_size = fontsize) %>% 
+  kable_styling(font_size = fontsize) %>% 
   save_kable(paste0(latexpath, "descriptives/controlvarssummary"), keep_tex = TRUE)
-setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
+setwd(wd)
 
 #system2("open", args = "test.png")
 
@@ -1987,124 +1768,6 @@ dat %>% group_by(meat_con) %>% summarise(mean = mean(ident_pro, na.rm = TRUE),
 # INFERENCIAL STATISTICS ####
 #================================================#
 
-#================================================#
-# Graphical Illustrations ####
-#================================================#
-
-
-
-# ggplot(dat, mapping = aes(ei_single, meat_concat)) + 
-#   geom_point(shape = 1) +
-#   geom_smooth(method = "lm", fill = "blue", alpha = 0.1) + 
-#   geom_hline(yintercept = mean(dat$meat_con), linetype="dotted") + #mean of sales
-#   geom_vline(xintercept = mean(dat$ei_scores), linetype="dotted") + #mean of advertising
-#   labs(x = "Advertising expenditures (EUR)", y = "Number of sales") + 
-#   theme_bw()
-# 
-# scatterplot <- ggscatterstats(
-#   data = dat,
-#   x = ei_single,
-#   y = meat_concat,
-#   xlab = "Advertising expenditure (EUR)", # label for x axis
-#   ylab = "Sales", # label for y axis
-#   line.color = "black", # changing regression line color line
-#   title = "Advertising expenditure and Sales", # title text for the plot
-#   marginal.type = "histogram", # type of marginal distribution to be displayed
-#   xfill = "steelblue", # color fill for x-axis marginal distribution
-#   yfill = "darkgrey", # color fill for y-axis marginal distribution
-#   xalpha = 0.6, # transparency for x-axis marginal distribution
-#   yalpha = 0.6, # transparency for y-axis marginal distribution
-#   bf.message = FALSE,
-#   messages = FALSE # turn off messages and notes
-# )
-# 
-# 
-# ggbetweenstats(
-#   data = dat,
-#   x = meat_concat,
-#   y = ident_pro,
-#   plot.type = "box",
-#   pairwise.comparisons = TRUE,
-#   pairwise.annotation = "p.value",
-#   p.adjust.method = "bonferroni",
-#   effsize.type = "partial_eta",
-#   var.equal = FALSE,
-#   mean.plotting = TRUE, # whether mean for each group is to be displayed
-#   mean.ci = TRUE, # whether to display confidence interval for means
-#   mean.label.size = 2.5, # size of the label for mean
-#   type = "p", # which type of test is to be run
-#   k = 3, # number of decimal places for statistical results
-#   outlier.label.color = "darkgreen", # changing the color for the text label
-#   title = "Comparison of listening times between groups",
-#   xlab = "Experimental group", # label for the x-axis variable
-#   ylab = "Listening time", # label for the y-axis variable
-#   messages = FALSE,
-#   bf.message = FALSE
-# )
-# 
-# ggstatsplot::grouped_ggbetweenstats(
-#   data = dplyr::filter(
-#     ggstatsplot::movies_long,
-#     genre %in% c("Action", "Comedy"),
-#     mpaa %in% c("R", "PG")
-#   ),
-#   x = genre,
-#   y = rating,
-#   grouping.var = mpaa,
-#   results.subtitle = FALSE,
-#   ggplot.component = ggplot2::scale_y_continuous(
-#     breaks = seq(1, 9, 1),
-#     limits = (c(1, 9))
-#   ),
-#   messages = FALSE
-# )
-
-
-# ggstatsplot::grouped_ggbetweenstats(
-#   data = dat,
-#   x = meat_concat,
-#   y = ei_ind,
-#   grouping.var = meat_know,
-#   conf.level = 0.99
-# )
-# 
-# 
-# dat %>%
-#   ggplot(aes(fill=meat_know, y=ei_ind, x=factor(meat_concat))) + 
-#   geom_violin(position="dodge", alpha=0.5, outlier.colour="transparent") +
-#   scale_fill_viridis(discrete=T, name="") +
-#   theme_ipsum()  +
-#   xlab("") +
-#   ylab("Tip (%)") +
-#   ylim(0,40)
-# 
-# 
-# 
-# ggplot(dat, aes(fill=meat_know, y=ei_ind, x=factor(meat_concat))) + 
-#   geom_boxplot()
-# 
-# 
-# ggplot(dat %>% drop_na(meat_know), aes(fill=meat_know, y=ident_pro, x=factor(meat_con))) + 
-#   geom_boxplot()
-
-### Recoding work
-# dat <- dat %>% mutate(ident_pro_rec = ifelse(ident_pro <= mean(ident_pro, na.rm = T), 0,
-#                                       ifelse(ident_pro > mean(ident_pro, na.rm = T), 1, NA)))
-# 
-# 
-# 
-# dat <- dat %>% mutate(ident_pro_rec2 = ifelse(ident_pro >= 4.2, 4,
-#                                        ifelse(ident_pro >= 3.3, 3,
-#                                        ifelse(ident_pro >= 3.0, 2,
-#                                        ifelse(ident_pro < 3.0, 1, NA)))))
-# 
-# dat$ident_pro_rec2 <- factor(dat$ident_pro_rec2, levels = c(1:4), labels = c("sehr niedrig", "niedrig", "hoch", "sehr hoch"))
-# 
-# dat <- dat %>% mutate(ident_pro_rec = ifelse(ident_pro <= mean(ident_pro, na.rm = T), 0,
-#                                       ifelse(ident_pro > mean(ident_pro, na.rm = T), 1, NA)))
-# 
-# dat$ident_pro_rec <- factor(dat$ident_pro_rec, levels = c(0:1), labels = c("lower", "higher"))
-
 # creating factors
 dat$meat_know <- factor(dat$meat_know, levels = c(0:1), labels = c("don´t know", "know"))
 dat$sex <- factor(dat$sex, levels = c(0:1), labels = c("männlich", "weiblich"))
@@ -2154,52 +1817,15 @@ dat <- dat[complete.cases(dat[,vars]), vars]
 reg1 <- lm(meat_con ~ ei_ind , data = dat)
 reg1_beta <- lm.beta::lm.beta(reg1)
 
-# regression plot
-# dat %>% 
-#   group_by(ei_ind) %>% 
-#   summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% 
-#   ggplot(aes(x = ei_ind, y = meat_con)) + geom_point() + geom_smooth(method = "lm")
-
 #--------------------------------------------------#
 # Model 2: Identity + Identity Prominence
 #--------------------------------------------------#
 reg2 <- update(reg1, .~. + ident_pro + ident_sal + ident_com_qual + ident_com_quant)
 
-# dat %>% 
-#   tidyr::drop_na(ident_pro_rec2) %>% 
-#   group_by(ident_pro_rec2, ei_ind) %>% 
-#   summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% 
-#   ggplot(aes(x = ei_ind, y = meat_con, group = ident_pro_rec2, color = ident_pro_rec2)) + geom_point() + geom_line()
-
 #--------------------------------------------------#
 # Model 2: Socials
 #--------------------------------------------------#
 reg3 <- update(reg2, .~.  + nep_ind + meat_know + meat_norm)
-
-
-# dat %>% 
-#   tidyr::drop_na(c("meat_norm", "meat_know")) %>% 
-#   group_by(meat_norm, meat_know) %>% 
-#   summarise(meat_con = mean(meat_con, na.rm = TRUE)) %>% 
-#   ggplot(aes(x = meat_norm, y = meat_con, group = meat_know, color = meat_know)) + geom_point() + geom_line()
-
-
-# Interaction Effekt Meat Norm
-
-# identity prominence:
-# Mit steigender identity prominence verändert sich auch der Fleischkonsum um x Punkte
-# (Wenn man nicht über die Schädlichkeit von Fleisch für die Umwelt Bescheid weiß, steigt es sogar)
-
-# Für Leute, die nicht über Umweltbelastung von Fleisch Bescheid wissen steigt mit zunehmender Wichtigkeit der Umweltidentität
-# auch der Fleischkonsum 
-
-# Interaction:
-# Mit steigender Wichtigkeit der Umweltidentität
-
-# Model 4: Other activities 
-#reg4 <- update(reg3, .~. + strom_öko + lm_reg + lm_bio)
-#summary(reg4)
-
 
 #--------------------------------------------------#
 # Model 4 Control Variables                             
@@ -2227,12 +1853,6 @@ mylist <- list(ident_pro=seq(1,5,by=0.25))
 # raw data of the plot
 plot.df <- emmeans::emmip(reg5, meat_know ~ ident_pro, at=mylist, plotit = FALSE)
 
-# get the interaction plot
-
-# emmeans::emmip(reg5, meat_know ~ ident_pro, at=mylist, CIs=TRUE) + 
-#   labs(x = "Wichtigkeit der Umweltidentität\n", y = "Fleischkonsum") +
-#   theme_minimal() + ylim(c(4,6))
-
 pdf(paste0(latexpath,"descriptives/interaction.pdf"), width = 8, height = 5, family = "CM Roman")
 plot.df %>% 
   ggplot(aes(x = xvar, y = yvar, color = tvar)) +
@@ -2247,37 +1867,10 @@ dev.off()
 
 
 
-# test
-# dat$meat_norm_fac <- as.factor(dat$meat_norm)
-# 
-# emmeans::emtrends(reg5, ~ meat_norm, var="ident_pro")
-# emmeans::emmip(reg5, meat_norm_fac ~ ident_pro, at=mylist, CIs=TRUE) + 
-#   labs(x = "Wichtigkeit der Umweltidentität\n", y = "Fleischkonsum") +
-#   theme_minimal() + ylim(c(4,6))
 
 #--------------------------------------------------#
-# Regression Output                             
+# Creating a stargazer Result Table
 #--------------------------------------------------#
-stargazer(reg1, reg2, reg3, reg4, reg5,
-          single.row = FALSE, 
-          ci = TRUE,
-          ci.separator = " - ",
-          digits = 2,
-          initial.zero = TRUE,
-          omit.stat=c("LL","ser","f"),
-          star.cutoffs = c(0.05, 0.01, 0.001),
-          covariate.labels = c(varnames[-7],"Interaktion (Wichtigkeit:Wissen)"),
-          dep.var.caption  = "Abhängige Variable",
-          dep.var.labels   = "Eingesch{\"a}tzter Fleischkonsum",
-          type = "text",
-          align = TRUE,
-          column.sep.width = "0.1pt",
-          label = "\\label{regression}",
-          table.placement = "H")
-
-
-# coef = list(reg1$coefficients, 
-#             reg1_beta$standardized.coefficients)
 
 varnames[c(8,11)] <- c("Wissen Treibhausgasausstoß - Ja","Geschlecht - weiblich")
 
@@ -2315,18 +1908,6 @@ table <- gsub("ß","{\\ss}", table,fixed=T)
 
 # save the modified file as .tex file
 writeLines(table, paste0(latexpath,"descriptives/regression.tex"))
-
-plot <- dat %>% group_by(ident_pro, meat_know) %>% summarise(mw = mean(meat_con),
-                                                          n = n())
-plot %>% 
-  ggplot(aes(x = ident_pro, y = mw, color = meat_know)) +
-  geom_line(size = 1) +
-  geom_point() +
-  scale_y_continuous(name = "Fleischkonsum", limits = c(4,6)) +
-  scale_x_continuous(name = "Wichtigkeit Umweltidentität") + 
-  scale_color_discrete(name = "Wissen\nTreibhausgasausstoß\nFleisch", labels = c("Kein Wissen", "Wissen"))
-
-
 
 #================================================#
 # Regression Diagnostics ####
@@ -2414,7 +1995,7 @@ coeftest(reg4, vcov = vcovHC(reg4))
 pdf(paste0(latexpath,"appendix/normalverteilung.pdf"), family = "CM Roman")
 ggplot(dat, aes(stud_resid)) + 
   geom_histogram(aes(y = ..density..), colour = "black", fill = "white") +
-  labs(x = "Standardisierte Redisuen", y = "Dichte") + 
+  labs(x = "Standardisierte Residuen", y = "Dichte") + 
   stat_function(fun = dnorm, 
   args = list(mean = mean(dat$stud_resid, na.rm = TRUE), 
                      sd = sd(dat$stud_resid, na.rm = TRUE)), colour = "blue", size = 1)+
@@ -2467,92 +2048,3 @@ dat$var_test <- rnorm(nrow(dat),0,1)
 
 # Model comparison with anova
 anova(reg4,reg5)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#-------------------------------------------------------------------#
-#----------------------Out-of-sample prediction---------------------#
-#-------------------------------------------------------------------#
-
-# randomly split into training and test data:
-set.seed(123)
-n <- nrow(dat)
-train <- sample(1:n,round(n*2/3))
-test <- (1:n)[-train]
-
-# estimate linear model based on training data
-multiple_train <- lm(meat_con ~ ei_ind + ident_pro + ident_sal + ident_com + 
-                       meat_know + meat_norm + nep_single15 + sex + age + isced + 
-                       income_hh, data = dat, subset=train)
-summary(multiple_train) #summary of results
-
-# using coefficients to predict test data
-pred_lm <- predict(multiple_train,newdata = dat[test,])
-cor(dat[test,"meat_con"],pred_lm, use = "complete.obs")^2 # R^2 for test data
-
-# plot predicted vs. observed values for test data
-plot(dat[test,"meat_con"],pred_lm,xlab="y measured",ylab="y predicted",cex.lab=1.3)
-abline(c(0,1))
-
-
-#================================================#
-# REGRESSION DIAGNOSTICS ####
-#================================================#
-# Alternatively, using ggstatsplot
-scatterplot <- ggscatterstats(
-  data = regression,
-  x = adspend,
-  y = sales,
-  xlab = "Advertising expenditure (EUR)", # label for x axis
-  ylab = "Sales", # label for y axis
-  line.color = "black", # changing regression line color line
-  title = "Advertising expenditure and Sales", # title text for the plot
-  marginal.type = "histogram", # type of marginal distribution to be displayed
-  xfill = "steelblue", # color fill for x-axis marginal distribution
-  yfill = "darkgrey", # color fill for y-axis marginal distribution
-  xalpha = 0.6, # transparency for x-axis marginal distribution
-  yalpha = 0.6, # transparency for y-axis marginal distribution
-  bf.message = FALSE,
-  messages = FALSE # turn off messages and notes
-)
-scatterplot
-#save plot (optional)
-
-ggsave("scatterplot.jpg", height = 6, width = 7.5,scatterplot)
-
-# visualization
-library(ggstatsplot)
-ggcoefstats(x = reg4,
-            title = "Sales predicted by adspend, airplay, & starpower")
-#save plot (optional)
-ggsave("lm_out.jpg", height = 6, width = 7.5)
-
-# reporting using stargazer
-# https://www.jakeruss.com/cheatsheets/stargazer/
-
-# Plot of model fit (predicted vs. observed values)
-dat$yhat <- predict(reg4)
-
-ggplot(dat,aes(x = yhat, y = meat_con)) +  
-  geom_point(size=2,shape=1) +  #Use hollow circles
-  scale_x_continuous(name="predicted values") +
-  scale_y_continuous(name="observed values") +
-  geom_abline(intercept = 0, slope = 1) +
-  theme_bw()
