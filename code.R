@@ -29,14 +29,6 @@ options(digits = 2)
 options(max.print = 100)
 fontsize <- 11
 
-
-#--------------------------------------------------#
-# Defining Latex working path for graphics
-#--------------------------------------------------#
-setwd("C:/Users/Ulli/Desktop/Thesis/Data/meat")
-wd <- "C:/Users/Ulli/Desktop/Thesis/Data/meat"
-latexpath <- "C:/Users/Ulli/Desktop/Thesis/thesis_small/graphics/"
-
 #================================================#
 # Download necessary files ####
 #================================================#
